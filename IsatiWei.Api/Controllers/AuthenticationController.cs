@@ -24,6 +24,23 @@ namespace IsatiWei.Api.Controllers
             _mapper = mapper;
         }
 
+        /// <summary>
+        /// Register a user
+        /// </summary>
+        /// <remarks>
+        /// Sample request:
+        ///
+        ///     POST /register
+        ///     {
+        ///         "firstName": "Victor",
+        ///         "lastName": "DENIS",
+        ///         "email": "admin@feldrise.com",
+        ///         "username": "Feldrise",
+        ///         "password": "MySecurePassword"
+        ///     }   
+        /// </remarks>
+        /// <param name="registerModel"></param>
+        /// <returns></returns>
         [HttpPost("register")]
         public IActionResult Register([FromBody]UserRegister registerModel)
         {
@@ -41,6 +58,14 @@ namespace IsatiWei.Api.Controllers
             return Ok();
         }
 
+        /// <summary>
+        /// Login a user
+        /// </summary>
+        /// <remarks>
+        /// The username can be both the email or the actual username.
+        /// </remarks>
+        /// <param name="loginModel"></param>
+        /// <returns>The user with all informations</returns>
         [HttpPost("login")]
         public ActionResult<User> Login([FromBody]UserLogin loginModel)
         {

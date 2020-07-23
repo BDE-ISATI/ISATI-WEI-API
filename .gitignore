@@ -2,6 +2,6 @@
 # This .gitignore file was automatically created by Microsoft(R) Visual Studio.
 ################################################################################
 
-/IsatiWei.Api/bin/Debug/netcoreapp3.1
-/.vs/IsatiWei/v16
+/.vs/
+/IsatiWei.Api/bin/
 /IsatiWei.Api/obj
