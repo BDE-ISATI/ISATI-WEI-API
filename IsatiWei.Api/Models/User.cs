@@ -37,5 +37,6 @@ namespace IsatiWei.Api.Models
          * Application specific things
          */
         public string Role { get; set; }
+        public int Score { get; set; }
     }
 }
