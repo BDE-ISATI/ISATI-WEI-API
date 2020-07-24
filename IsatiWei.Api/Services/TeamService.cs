@@ -65,7 +65,8 @@ namespace IsatiWei.Api.Services
                 CaptainId = captainId,
                 Name = name,
                 Members = new List<string>(),
-                Score = 0
+                Score = 0,
+                FinishedCallenges = new Dictionary<string, int>()
             };
 
             if (TeamExist(team))
@@ -82,7 +83,7 @@ namespace IsatiWei.Api.Services
         /*
          * Utility stuff
          */
-        public async Task<int> GetTeamRankAsync(String teamId)
+        public async Task<int> GetTeamRankAsync(string teamId)
         {
             var sortedTeams = await _teams.Find(team => true).Sort(new BsonDocument("Score", -1)).ToListAsync();
 

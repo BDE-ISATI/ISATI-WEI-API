@@ -38,5 +38,8 @@ namespace IsatiWei.Api.Models
          */
         public string Role { get; set; }
         public int Score { get; set; }
+
+        public Dictionary<string, byte[]> WaitingCallenges;
+        public Dictionary<string, int> FinishedCallenges;
     }
 }

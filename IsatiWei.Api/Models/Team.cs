@@ -18,5 +18,7 @@ namespace IsatiWei.Api.Models
         public string Name { get; set; }
         public List<string> Members { get; set; }
         public int Score { get; set; }
+
+        public Dictionary<string, int> FinishedCallenges;
     }
 }

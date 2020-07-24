@@ -61,8 +61,10 @@ namespace IsatiWei.Api.Services
             user.PasswordHash = Convert.ToBase64String(passwordHash);
             user.PasswordSalt = passwordSalt;
 
-            // Insert user to database, so first we apply him the default role
+            // Insert user to database, so first we apply him the default data
             user.Role = UserRoles.Default;
+            user.WaitingCallenges = new Dictionary<string, byte[]>() { };
+            user.FinishedCallenges = new Dictionary<string, int>() { };
 
             _users.InsertOne(user);
 
