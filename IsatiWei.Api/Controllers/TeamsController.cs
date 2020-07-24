@@ -99,6 +99,30 @@ namespace IsatiWei.Api.Controllers
         }
 
         /*
+         * Put
+         */
+        /// <summary>
+        /// Update a team
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="team"></param>
+        /// <returns></returns>
+        [HttpPut("update/{id:length(24)}")]
+        public async Task<IActionResult> UpdateTeam(string id, [FromBody] Team team)
+        {
+            try
+            {
+                await _teamService.UpdateTeamAsync(id, team);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+
+            return Ok();
+        }
+
+        /*
          * Delete
          */
         /// <summary>

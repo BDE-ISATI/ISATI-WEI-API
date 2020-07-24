@@ -14,6 +14,7 @@ namespace IsatiWei.Api.Models
         public const string Captain = "Captain";
         public const string Administrator = "Administrator";
 
+        // Administrators have the same rights as captains as default
         public static bool RoleAuthorized(string checkedRole, string permission)
         {
             if (checkedRole == Administrator) return true;

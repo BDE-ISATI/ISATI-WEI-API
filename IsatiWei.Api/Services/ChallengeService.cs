@@ -1,4 +1,5 @@
 ﻿using IsatiWei.Api.Models;
+using IsatiWei.Api.Models.Game;
 using IsatiWei.Api.Settings;
 using MongoDB.Driver;
 using System;
@@ -48,6 +49,101 @@ namespace IsatiWei.Api.Services
             return challenges;
         }
 
+        public async Task<List<IndividualChallenge>> GetChallengeForPlayerAsync(string playerId)
+        {
+            var challenges = await (await _challenges.FindAsync(databaseChallenge => !databaseChallenge.IsForTeam)).ToListAsync();
+
+            var player = await (await _users.FindAsync(databaseUser => databaseUser.Id == playerId)).FirstOrDefaultAsync();
+            if (player == null) return new List<IndividualChallenge>();
+
+            List<IndividualChallenge> result = new List<IndividualChallenge>();
+
+            foreach (var challenge in challenges)
+            {
+                result.Add(new IndividualChallenge()
+                {
+                    Id = challenge.Id,
+                    Name = challenge.Name,
+                    Description = challenge.Description,
+                    Base64Image = Convert.ToBase64String(challenge.Image),
+                    Value = challenge.Value,
+                    WaitingValidation = player.WaitingCallenges.ContainsKey(challenge.Id),
+                    NumberLeft = challenge.NumberOfRepetitions - player.FinishedCallenges[challenge.Id]
+
+                });
+            }
+
+            return result;
+        }
+
+        public async Task<List<TeamChallenge>> GetChallengeForTeamAsync(string teamId)
+        {
+            var challenges = await (await _challenges.FindAsync(databaseChallenge => databaseChallenge.IsForTeam)).ToListAsync();
+
+            var team = await (await _teams.FindAsync(databaseTeam => databaseTeam.Id == teamId)).FirstOrDefaultAsync();
+            if (team == null) return new List<TeamChallenge>();
+
+            List<TeamChallenge> result = new List<TeamChallenge>();
+
+            foreach (var challenge in challenges)
+            {
+                result.Add(new TeamChallenge()
+                {
+                    Id = challenge.Id,
+                    Name = challenge.Name,
+                    Description = challenge.Description,
+                    Base64Image = Convert.ToBase64String(challenge.Image),
+                    Value = challenge.Value,
+                    NumberLeft = challenge.NumberOfRepetitions - team.FinishedCallenges[challenge.Id]
+
+                });
+            }
+
+            return result;
+        }
+
+        public async Task<List<WaitingChallenge>> GetWaitingChallenges(string captainId)
+        {
+            var captain = await (await _users.FindAsync(databaseUser => databaseUser.Id == captainId)).FirstOrDefaultAsync();
+            if (captain == null) return null;
+
+            // Admin can see all waiting challenges, captain only his team's one
+            List<User> players;
+            if (captain.Role == UserRoles.Administrator)
+            {
+                players = await (await _users.FindAsync(databaseUser => databaseUser.Role == UserRoles.Default)).ToListAsync();
+            }
+            else
+            {
+                Team team = await (await _teams.FindAsync(databaseTeam => databaseTeam.CaptainId == captainId)).FirstOrDefaultAsync();
+                if (team == null) return null;
+
+                players = await (await _users.FindAsync(databaseUser => team.Members.Contains(databaseUser.Id))).ToListAsync();
+            }
+
+            List<WaitingChallenge> result = new List<WaitingChallenge>();
+
+            foreach (var player in players)
+            {
+                var challenges = await (await _challenges.FindAsync(databaseChallenge => player.WaitingCallenges.ContainsKey(databaseChallenge.Id))).ToListAsync();
+
+                foreach (var challenge in challenges)
+                {
+                    result.Add(new WaitingChallenge()
+                    {
+                        Id = challenge.Id,
+                        ValidatorId = player.Id,
+                        Name = challenge.Name,
+                        Description = challenge.Description,
+                        Base64Image = Convert.ToBase64String(challenge.Image),
+                        Base64ProofImage = Convert.ToBase64String(player.WaitingCallenges[challenge.Id])
+                    });
+                }
+            }
+
+            return result;
+        }
+
         /*
          * Edition stuff
          */
@@ -81,7 +177,7 @@ namespace IsatiWei.Api.Services
         /*
          * Game Stuff
          */
-        public async Task SubmitChallengeForValidatiob(string userId, string challengeId, byte[] proofImage)
+        public async Task SubmitChallengeForValidationAsync(string userId, string challengeId, byte[] proofImage)
         {
             User user = await (await _users.FindAsync(databaseUser => databaseUser.Id == userId)).FirstOrDefaultAsync();
             if (user == null) throw new Exception("The user doesn't exist");
@@ -95,7 +191,7 @@ namespace IsatiWei.Api.Services
             await _users.ReplaceOneAsync(databaseUser => databaseUser.Id == user.Id, user);
         }
 
-        public async Task ValidateChallengeForUser(string userId, string challengeId)
+        public async Task ValidateChallengeForUserAsync(string userId, string challengeId)
         {
             User user = await (await _users.FindAsync(databaseUser => databaseUser.Id == userId)).FirstOrDefaultAsync();
             if (user == null) throw new Exception("The user doesn't exist");
@@ -128,7 +224,7 @@ namespace IsatiWei.Api.Services
             await _teams.ReplaceOneAsync(databaseTeam => databaseTeam.Id == userTeam.Id, userTeam);
         }
 
-        public async Task ValidateChallengeForTeam(string teamId, string challengeId)
+        public async Task ValidateChallengeForTeamAsync(string teamId, string challengeId)
         {
             Team team = await (await _teams.FindAsync(databaseTeam => databaseTeam.Id == teamId)).FirstOrDefaultAsync();
             if (team == null) throw new Exception("The team doesn't exisit");

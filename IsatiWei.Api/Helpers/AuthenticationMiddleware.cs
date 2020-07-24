@@ -71,9 +71,26 @@ namespace IsatiWei.Api.Helpers
                 }
                 else
                 {
-                    await _next.Invoke(context);
+                    await CheckAuthorizationForGame(context, id, passwordHash);
                 }
             }
+        }
+
+        private async Task CheckAuthorizationForGame(HttpContext context, string id, string passwordHash)
+        {
+            // Captain related request
+            if (context.Request.Path.Value.Contains("challenges/waiting") ||
+                context.Request.Path.Value.Contains("challenges/validate_for_user") ||
+                context.Request.Path.Value.Contains("challenges/validate_for_team"))
+            {
+                if (!await _authenticationService.CheckCredentialAsync(id, passwordHash, UserRoles.Captain))
+                {
+                    context.Response.StatusCode = 401;
+                    return;
+                }
+            }
+
+            await _next.Invoke(context);
         }
     }
 }

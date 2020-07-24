@@ -79,6 +79,38 @@ namespace IsatiWei.Api.Services
             return team;
         }
 
+        public async Task UpdateTeamAsync(string teamId, Team toUpdate)
+        {
+            if (string.IsNullOrWhiteSpace(toUpdate.Id)) throw new Exception("The id must be provided in the body");
+            if (string.IsNullOrWhiteSpace(toUpdate.Name)) throw new ArgumentException("You must provide a name for the team", "name");
+            if (string.IsNullOrWhiteSpace(toUpdate.CaptainId)) throw new ArgumentException("You must provide a captain for the team", "captainId");
+
+            Team current = await (await _teams.FindAsync(databaseTeam => databaseTeam.Id == teamId)).FirstOrDefaultAsync();
+            if (current == null) throw new Exception("The team you want to update doesn't exist");
+
+            // We need to change the role of the old captain
+            if (current.CaptainId != toUpdate.CaptainId)
+            {
+                User oldCaptain = await (await _users.FindAsync(databaseUser => databaseUser.Id == current.CaptainId)).FirstOrDefaultAsync();
+                User newCaptain = await (await _users.FindAsync(databaseUser => databaseUser.Id == toUpdate.CaptainId)).FirstOrDefaultAsync();
+
+                if (oldCaptain.Role != UserRoles.Administrator)
+                {
+                    oldCaptain.Role = UserRoles.Default;
+                    await _users.ReplaceOneAsync(databaseUser => databaseUser.Id == oldCaptain.Id, oldCaptain);
+                }
+                
+                if (newCaptain.Role != UserRoles.Administrator)
+                {
+                    newCaptain.Role = UserRoles.Captain;
+                    await _users.ReplaceOneAsync(databaseUser => databaseUser.Id == newCaptain.Id, newCaptain);
+                }
+            }
+
+            // We finaly update the team
+            await _teams.ReplaceOneAsync(databaseTeam => databaseTeam.Id == toUpdate.Id, toUpdate);
+        }
+
         public Task DeleteTeamAsync(string teamId)
         {
             return _teams.DeleteOneAsync(team => team.Id == teamId);
