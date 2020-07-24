@@ -79,6 +79,10 @@ namespace IsatiWei.Api.Services
             return team;
         }
 
+        public Task DeleteTeamAsync(string teamId)
+        {
+            return _teams.DeleteOneAsync(team => team.Id == teamId);
+        }
 
         /*
          * Utility stuff

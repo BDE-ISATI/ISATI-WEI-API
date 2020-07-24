@@ -97,5 +97,28 @@ namespace IsatiWei.Api.Controllers
 
             return team;
         }
+
+        /*
+         * Delete
+         */
+        /// <summary>
+        /// Delete a team
+        /// </summary>
+        /// <param name="id">The ID of the team you want to delete</param>
+        /// <returns></returns>
+        [HttpDelete("delete/{id:length(24)}")]
+        public async Task<IActionResult> DeleteTeam(string id)
+        {
+            bool exist = (await _teamService.GetTeamAsync(id)) != null;
+
+            if (!exist)
+            {
+                return NotFound();
+            }
+
+            await _teamService.DeleteTeamAsync(id);
+
+            return Ok();
+        }
     }
 }

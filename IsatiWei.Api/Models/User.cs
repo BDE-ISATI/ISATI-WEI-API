@@ -1,5 +1,6 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,6 +13,15 @@ namespace IsatiWei.Api.Models
         public const string Default = "Default";
         public const string Captain = "Captain";
         public const string Administrator = "Administrator";
+
+        public static bool RoleAuthorized(string checkedRole, string permission)
+        {
+            if (checkedRole == Administrator) return true;
+            if (checkedRole == Captain) return permission == Captain || permission == Default;
+            if (checkedRole == Default) return permission == Default;
+
+            return false;
+        }
     }
 
     // Represent the user
@@ -39,7 +49,9 @@ namespace IsatiWei.Api.Models
         public string Role { get; set; }
         public int Score { get; set; }
 
-        public Dictionary<string, byte[]> WaitingCallenges;
+        [JsonIgnore]
+        public Dictionary<string, byte[]> WaitingCallenges; // Since this one contains proof images,
+                                                            // we don't want to transfer it anywhere
         public Dictionary<string, int> FinishedCallenges;
     }
 }

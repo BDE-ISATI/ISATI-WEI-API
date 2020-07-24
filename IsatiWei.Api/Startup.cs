@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using AutoMapper;
+using IsatiWei.Api.Helpers;
 using IsatiWei.Api.Services;
 using IsatiWei.Api.Settings;
 using Microsoft.AspNetCore.Builder;
@@ -91,6 +92,8 @@ namespace IsatiWei.Api
             app.UseRouting();
 
             app.UseAuthorization();
+
+            app.UseMiddleware<AuthenticationMiddleware>();
 
             app.UseEndpoints(endpoints =>
             {

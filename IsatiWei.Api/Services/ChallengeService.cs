@@ -73,6 +73,11 @@ namespace IsatiWei.Api.Services
             return _challenges.ReplaceOneAsync(challenge => challenge.Id == id, toUpdate);
         }
 
+        public Task DeleteChallengeAsync(string challengeId)
+        {
+            return _challenges.DeleteOneAsync(challenge => challenge.Id == challengeId);
+        }
+
         /*
          * Game Stuff
          */

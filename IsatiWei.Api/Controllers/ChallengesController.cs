@@ -110,5 +110,28 @@ namespace IsatiWei.Api.Controllers
 
             return Ok();
         }
+
+        /*
+         * Delete
+         */
+        /// <summary>
+        /// Delete a team
+        /// </summary>
+        /// <param name="id">The ID of the team you want to delete</param>
+        /// <returns></returns>
+        [HttpDelete("delete/{id:length(24)}")]
+        public async Task<IActionResult> DeleteChallenge(string id)
+        {
+            bool exist = (await _challengeService.GetChallengeAsync(id)) != null;
+
+            if (!exist)
+            {
+                return NotFound();
+            }
+
+            await _challengeService.DeleteChallengeAsync(id);
+
+            return Ok();
+        }
     }
 }

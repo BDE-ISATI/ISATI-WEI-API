@@ -75,16 +75,16 @@ namespace IsatiWei.Api.Services
          * Password and credential related functions
          */
         // We need to be able to check credential with only the password hash
-        public bool CheckCredential(string id, string passwordHash)
+        public async Task<bool> CheckCredentialAsync(string id, string passwordHash, string neededRole)
         {
-            User databaseUser = _users.Find(searchedUser => searchedUser.Id == id).FirstOrDefault();
+            User databaseUser = await (await _users.FindAsync(searchedUser => searchedUser.Id == id)).FirstOrDefaultAsync();
 
             if (databaseUser == null)
             {
                 return false;
             }
 
-            return passwordHash == databaseUser.PasswordHash;
+            return passwordHash == databaseUser.PasswordHash && UserRoles.RoleAuthorized(databaseUser.Role, neededRole);
         }
 
         public void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt)
