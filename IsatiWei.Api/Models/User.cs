@@ -51,7 +51,7 @@ namespace IsatiWei.Api.Models
         public int Score { get; set; }
 
         [JsonIgnore]
-        public Dictionary<string, byte[]> WaitingCallenges; // Since this one contains proof images,
+        public Dictionary<string, ObjectId> WaitingCallenges; // Since this one contains proof images,
                                                             // we don't want to transfer it anywhere
         public Dictionary<string, int> FinishedCallenges;
     }

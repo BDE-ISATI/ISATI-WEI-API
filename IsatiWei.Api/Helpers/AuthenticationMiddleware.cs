@@ -55,9 +55,9 @@ namespace IsatiWei.Api.Helpers
                 }
 
                 // Only administrators can add/update/delete things
-                if (context.Request.Path.Value.Contains("add") ||
-                    context.Request.Path.Value.Contains("update") ||
-                    context.Request.Path.Value.Contains("delete"))
+                if (context.Request.Path.Value.ToLower().Contains("add") ||
+                    context.Request.Path.Value.ToLower().Contains("update") ||
+                    context.Request.Path.Value.ToLower().Contains("delete"))
                 {
                     if (await _authenticationService.CheckCredentialAsync(id, passwordHash, UserRoles.Administrator))
                     {
@@ -79,9 +79,11 @@ namespace IsatiWei.Api.Helpers
         private async Task CheckAuthorizationForGame(HttpContext context, string id, string passwordHash)
         {
             // Captain related request
-            if (context.Request.Path.Value.Contains("challenges/waiting") ||
-                context.Request.Path.Value.Contains("challenges/validate_for_user") ||
-                context.Request.Path.Value.Contains("challenges/validate_for_team"))
+            if (context.Request.Path.Value.ToLower().Contains("challenges/waiting") ||
+                context.Request.Path.Value.ToLower().Contains("validate_for_user") ||
+                context.Request.Path.Value.ToLower().Contains("validate_for_team") ||
+                context.Request.Path.Value.ToLower().Contains("challenges/proof") ||
+                context.Request.Path.Value.ToLower().Contains("add_user"))
             {
                 if (!await _authenticationService.CheckCredentialAsync(id, passwordHash, UserRoles.Captain))
                 {

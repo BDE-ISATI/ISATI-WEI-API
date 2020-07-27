@@ -13,11 +13,10 @@ namespace IsatiWei.Api.Models.Game
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; }
         public string ValidatorId { get; set; } // Can be both a player or a team ID
+        public string ValidatorName { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
         [BsonIgnore]
-        public string Base64Image { get; set; }
-        [BsonIgnore]
-        public string Base64ProofImage { get; set; }
+        public byte[] Image { get; set; }
     }
 }

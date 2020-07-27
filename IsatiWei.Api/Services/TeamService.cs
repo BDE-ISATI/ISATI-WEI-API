@@ -25,16 +25,30 @@ namespace IsatiWei.Api.Services
 
         public async Task<Team> GetTeamAsync(string teamId)
         {
-            var team = await _teams.FindAsync(team => team.Id == teamId);
+            var team = await (await _teams.FindAsync(team => team.Id == teamId)).FirstOrDefaultAsync();
+            if (team == null) return null;
 
-            return await team.FirstOrDefaultAsync();
+            var captain = await (await _users.FindAsync(databaseUser => databaseUser.Id == team.CaptainId)).FirstOrDefaultAsync();
+            if (captain == null) return null;
+
+            team.CaptainName = $"{captain.FirstName} {captain.LastName}";
+
+            return team;
         }
 
         public async Task<List<Team>> GetTeamsAsync()
         {
-            var teams = await _teams.FindAsync(team => true);
+            var teams = await (await _teams.FindAsync(team => true)).ToListAsync();
 
-            return await teams.ToListAsync();
+            foreach (var team in teams)
+            {
+                var captain = await (await _users.FindAsync(databaseUser => databaseUser.Id == team.CaptainId)).FirstOrDefaultAsync();
+                if (captain == null) continue;
+
+                team.CaptainName = $"{captain.FirstName} {captain.LastName}";
+            }
+
+            return teams;
         }
 
         /*
@@ -52,6 +66,8 @@ namespace IsatiWei.Api.Services
             {
                 throw new Exception("The user specified to be captain is not valid");
             }
+
+            if (newCaptain.Role == UserRoles.Captain) throw new Exception("The user choosed is already a captain");
 
             if (newCaptain.Role != UserRoles.Administrator)
             {
@@ -107,13 +123,52 @@ namespace IsatiWei.Api.Services
                 }
             }
 
-            // We finaly update the team
-            await _teams.ReplaceOneAsync(databaseTeam => databaseTeam.Id == toUpdate.Id, toUpdate);
+            // We finally update the team, based on the current to keep members and score
+            current.Name = toUpdate.Name;
+            current.CaptainId = toUpdate.CaptainId;
+
+            await _teams.ReplaceOneAsync(databaseTeam => databaseTeam.Id == toUpdate.Id, current);
         }
 
         public Task DeleteTeamAsync(string teamId)
         {
             return _teams.DeleteOneAsync(team => team.Id == teamId);
+        }
+
+        /*
+         * Members stuff
+         */
+        public async Task<Team> GetUserTeamAsync(string userId)
+        {
+            List<Team> teams = await (await _teams.FindAsync(databaseTeam => true)).ToListAsync();
+
+            foreach (var team in teams)
+            {
+                if (team.Members.Contains(userId) || team.CaptainId == userId)
+                {
+                    var captain = await (await _users.FindAsync(databaseUser => databaseUser.Id == team.CaptainId)).FirstOrDefaultAsync();
+                    if (captain == null) continue;
+
+                    team.CaptainName = $"{captain.FirstName} {captain.LastName}";
+
+                    return team;
+                }
+            }
+
+            return null;
+        }
+
+        public async Task AddUserToTeam(string teamId, string userId)
+        {
+            if (await GetUserTeamAsync(userId) != null) throw new Exception("The user already belong to a team");
+
+            Team team = await (await _teams.FindAsync(databaseTeam => databaseTeam.Id == teamId)).FirstOrDefaultAsync();
+            if (team == null) throw new Exception("The team doesn't exist");
+
+            team.Members.Add(userId);
+
+            // We update the database
+            await _teams.ReplaceOneAsync(databaseTeam => databaseTeam.Id == team.Id, team);
         }
 
         /*

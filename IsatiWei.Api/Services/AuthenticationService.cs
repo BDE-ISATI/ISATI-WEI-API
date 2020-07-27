@@ -1,5 +1,6 @@
 ﻿using IsatiWei.Api.Models;
 using IsatiWei.Api.Settings;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using System;
 using System.Collections.Generic;
@@ -63,7 +64,7 @@ namespace IsatiWei.Api.Services
 
             // Insert user to database, so first we apply him the default data
             user.Role = UserRoles.Default;
-            user.WaitingCallenges = new Dictionary<string, byte[]>() { };
+            user.WaitingCallenges = new Dictionary<string, ObjectId>() { };
             user.FinishedCallenges = new Dictionary<string, int>() { };
 
             _users.InsertOne(user);

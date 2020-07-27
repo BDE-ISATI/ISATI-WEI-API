@@ -65,6 +65,19 @@ namespace IsatiWei.Api.Controllers
             return await _teamService.GetTeamRankAsync(id);
         }
 
+        /// <summary>
+        /// Get the team of a specific user
+        /// </summary>
+        /// <param name="userId">The user's ID we want to know the team</param>
+        /// <returns></returns>
+        [HttpGet("for_user/{userId:length(24)}")]
+        public async Task<ActionResult<Team>> GetTeamForUser(string userId)
+        {
+            Team team = await _teamService.GetUserTeamAsync(userId);
+
+            return Ok(team);
+        }
+
         /*
          * Post
          */
@@ -113,6 +126,35 @@ namespace IsatiWei.Api.Controllers
             try
             {
                 await _teamService.UpdateTeamAsync(id, team);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+
+            return Ok();
+        }
+
+        /// <summary>
+        /// Add a user to a team
+        /// </summary>
+        /// <remarks>
+        /// Here the ID is enough
+        /// 
+        ///      PUT /{teamId}/add_user
+        ///      {
+        ///           "id": "5f1aa9610cb5aa794889bdd4"
+        ///      }
+        /// </remarks>
+        /// <param name="teamId"></param>
+        /// <param name="userToAdd"></param>
+        /// <returns></returns>
+        [HttpPut("{teamId:length(24)}/add_user")]
+        public async Task<IActionResult> AddUserToTeam(string teamId, [FromBody] User userToAdd)
+        {
+            try
+            {
+                await _teamService.AddUserToTeam(teamId, userToAdd.Id);
             }
             catch (Exception e)
             {

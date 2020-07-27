@@ -95,6 +95,46 @@ namespace IsatiWei.Api.Controllers
             return Ok(result);
         }
 
+        /// <summary>
+        /// Get all challenges realised at least on time by player
+        /// </summary>
+        /// <param name="player">The player we want done challenges</param>
+        /// <returns></returns>
+        [HttpGet("done/{player:length(24)}")]
+        public async Task<ActionResult<List<IndividualChallenge>>> GetDoneChallenges(string player)
+        {
+            var result = await _challengeService.GetDoneChallenges(player);
+
+            if (result == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Get the proof image for a challenge for a player
+        /// </summary>
+        /// <param name="challenge"></param>
+        /// <param name="player"></param>
+        /// <returns></returns>
+        [HttpGet("proof/{challenge:length(24)}/{player:length(24)}")]
+        public async Task<ActionResult<ProofImage>> GetProofImage(string challenge, string player)
+        {
+            var result = await _challengeService.GetProofImage(challenge, player);
+
+            if (result == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(new ProofImage()
+            {
+                Image = result
+            });
+        }
+
         /*
          * Post
          */
@@ -108,31 +148,41 @@ namespace IsatiWei.Api.Controllers
         /// <param name="toCreate"></param>
         /// <returns></returns>
         [HttpPost("add")]
-        public async Task<IActionResult> CreateChallenge([FromBody] Challenge toCreate)
+        public async Task<ActionResult<Challenge>> CreateChallenge([FromBody] Challenge toCreate)
         {
             try
             {
-                await _challengeService.CreateChallengeAsync(toCreate);
+                toCreate = await _challengeService.CreateChallengeAsync(toCreate);
             }
             catch (Exception e)
             {
                 return BadRequest(e.Message);
             }
 
-            return Ok();
+            return Ok(toCreate);
         }
 
         /// <summary>
         /// Submit a challenge for validation
         /// </summary>
+        /// <remarks>
+        /// You only need a few fields here
+        /// 
+        ///     POST /submit
+        ///     {
+        ///         "proofImage": "Base64 string of the proof image"
+        ///     }
+        /// </remarks>
+        /// <param name="id"></param>
         /// <param name="toSubmit"></param>
+        /// <param name="authorization"></param>
         /// <returns></returns>
-        [HttpPost("submit")]
-        public async Task<IActionResult> SubmitChallengeForValidation([FromBody] WaitingChallenge toSubmit)
+        [HttpPost("{id:length(24)}/submit")]
+        public async Task<IActionResult> SubmitChallengeForValidation(string id, [FromBody] ChallengeSubmission toSubmit, [FromHeader] string authorization)
         {
             try
             {
-                await _challengeService.SubmitChallengeForValidationAsync(toSubmit.ValidatorId, toSubmit.Id, Convert.FromBase64String(toSubmit.Base64ProofImage));
+                await _challengeService.SubmitChallengeForValidationAsync(UserIdFromAuth(authorization), id, toSubmit.ProofImage);
             }
             catch (Exception e)
             {
@@ -147,15 +197,21 @@ namespace IsatiWei.Api.Controllers
         /// </summary>
         /// <remarks>
         /// In this particulare case, their is no need to add the proof image to the JSON
+        /// 
+        ///     POST /validate_for_user
+        ///     {
+        ///         "validatorId": "Id of the player"
+        ///     }
         /// </remarks>
+        /// <param name="id"></param>
         /// <param name="toValidate"></param>
         /// <returns></returns>
-        [HttpPost("validate_for_user")]
-        public async Task<IActionResult> ValidateChallengeForUser([FromBody] WaitingChallenge toValidate)
+        [HttpPost("{id:length(24)}/validate_for_user")]
+        public async Task<IActionResult> ValidateChallengeForUser(string id, [FromBody] ChallengeSubmission toValidate)
         {
             try
             {
-                await _challengeService.ValidateChallengeForUserAsync(toValidate.ValidatorId, toValidate.Id);
+                await _challengeService.ValidateChallengeForUserAsync(toValidate.ValidatorId, id);
             }
             catch (Exception e)
             {
@@ -170,15 +226,21 @@ namespace IsatiWei.Api.Controllers
         /// </summary>
         /// <remarks>
         /// In this particulare case, their is no need to add the proof image to the JSON
+        /// 
+        ///     POST /validate_for_team
+        ///     {
+        ///         "validatorId": "Id of the team"
+        ///     }
         /// </remarks>
+        /// <param name="id"></param>
         /// <param name="toValidate"></param>
         /// <returns></returns>
-        [HttpPost("validate_for_team")]
-        public async Task<IActionResult> ValidateChallengeForTeam([FromBody] WaitingChallenge toValidate)
+        [HttpPost("{id:length(24)}/validate_for_team")]
+        public async Task<IActionResult> ValidateChallengeForTeam(string id, [FromBody] ChallengeSubmission toValidate)
         {
             try
             {
-                await _challengeService.ValidateChallengeForTeamAsync(toValidate.ValidatorId, toValidate.Id);
+                await _challengeService.ValidateChallengeForTeamAsync(toValidate.ValidatorId, id);
             }
             catch (Exception e)
             {

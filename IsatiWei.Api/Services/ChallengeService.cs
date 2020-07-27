@@ -2,6 +2,7 @@
 using IsatiWei.Api.Models.Game;
 using IsatiWei.Api.Settings;
 using MongoDB.Driver;
+using MongoDB.Driver.GridFS;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,6 +16,8 @@ namespace IsatiWei.Api.Services
         private readonly IMongoCollection<User> _users;
         private readonly IMongoCollection<Challenge> _challenges;
 
+        private readonly GridFSBucket _gridFS;
+
         public ChallengeService(IMongoSettings settings)
         {
             var client = new MongoClient(settings.ConnectionString);
@@ -23,35 +26,27 @@ namespace IsatiWei.Api.Services
             _teams = database.GetCollection<Team>("teams");
             _users = database.GetCollection<User>("users");
             _challenges = database.GetCollection<Challenge>("challenges");
+
+            _gridFS = new GridFSBucket(database);
         }
 
         public async Task<Challenge> GetChallengeAsync(string challengeId)
         {
-            var challenge = await (await _challenges.FindAsync(databaseChallenge => databaseChallenge.Id == challengeId)).FirstOrDefaultAsync();
+            var challenge = await _challenges.FindAsync(databaseChallenge => databaseChallenge.Id == challengeId);
 
-            if (challenge != null && challenge.Image != null)
-            {
-                challenge.Base64Image = Convert.ToBase64String(challenge.Image);
-            }
-
-            return challenge;
+            return await challenge.FirstOrDefaultAsync();
         }
 
         public async Task<List<Challenge>> GetChallengesAsync()
         {
-            var challenges = await (await _challenges.FindAsync(databaseChallenge => true)).ToListAsync();
+            var challenges = await _challenges.FindAsync(databaseChallenge => true);
 
-            foreach (var challenge in challenges)
-            {
-                challenge.Base64Image = Convert.ToBase64String(challenge.Image);
-            }
-
-            return challenges;
+            return await challenges.ToListAsync();
         }
 
         public async Task<List<IndividualChallenge>> GetChallengeForPlayerAsync(string playerId)
         {
-            var challenges = await (await _challenges.FindAsync(databaseChallenge => !databaseChallenge.IsForTeam)).ToListAsync();
+            var challenges = await (await _challenges.FindAsync(databaseChallenge => !databaseChallenge.IsForTeam && databaseChallenge.IsVisible)).ToListAsync();
 
             var player = await (await _users.FindAsync(databaseUser => databaseUser.Id == playerId)).FirstOrDefaultAsync();
             if (player == null) return new List<IndividualChallenge>();
@@ -65,10 +60,10 @@ namespace IsatiWei.Api.Services
                     Id = challenge.Id,
                     Name = challenge.Name,
                     Description = challenge.Description,
-                    Base64Image = Convert.ToBase64String(challenge.Image),
+                    Image = challenge.Image,
                     Value = challenge.Value,
                     WaitingValidation = player.WaitingCallenges.ContainsKey(challenge.Id),
-                    NumberLeft = challenge.NumberOfRepetitions - player.FinishedCallenges[challenge.Id]
+                    NumberLeft = (player.FinishedCallenges.ContainsKey(challenge.Id)) ? challenge.NumberOfRepetitions - player.FinishedCallenges[challenge.Id] : challenge.NumberOfRepetitions
 
                 });
             }
@@ -78,7 +73,7 @@ namespace IsatiWei.Api.Services
 
         public async Task<List<TeamChallenge>> GetChallengeForTeamAsync(string teamId)
         {
-            var challenges = await (await _challenges.FindAsync(databaseChallenge => databaseChallenge.IsForTeam)).ToListAsync();
+            var challenges = await (await _challenges.FindAsync(databaseChallenge => databaseChallenge.IsForTeam && databaseChallenge.IsVisible)).ToListAsync();
 
             var team = await (await _teams.FindAsync(databaseTeam => databaseTeam.Id == teamId)).FirstOrDefaultAsync();
             if (team == null) return new List<TeamChallenge>();
@@ -92,7 +87,7 @@ namespace IsatiWei.Api.Services
                     Id = challenge.Id,
                     Name = challenge.Name,
                     Description = challenge.Description,
-                    Base64Image = Convert.ToBase64String(challenge.Image),
+                    Image = challenge.Image,
                     Value = challenge.Value,
                     NumberLeft = challenge.NumberOfRepetitions - team.FinishedCallenges[challenge.Id]
 
@@ -102,6 +97,36 @@ namespace IsatiWei.Api.Services
             return result;
         }
 
+        /*
+         * Edition stuff
+         */
+        public async Task<Challenge> CreateChallengeAsync(Challenge toCreate)
+        {
+            if (string.IsNullOrWhiteSpace(toCreate.Name)) throw new Exception("You must provide a name to the challenge");
+            if (string.IsNullOrWhiteSpace(toCreate.Description)) throw new Exception("You must provide a description to the challenge");
+
+            await _challenges.InsertOneAsync(toCreate);
+
+            return toCreate;
+        }
+
+        public Task UpdateChallengeAsync(string id, Challenge toUpdate)
+        {
+            if (string.IsNullOrWhiteSpace(toUpdate.Id)) throw new Exception("The id must be provided in the body");
+            if (string.IsNullOrWhiteSpace(toUpdate.Name)) throw new Exception("You must provide a name to the challenge");
+            if (string.IsNullOrWhiteSpace(toUpdate.Description)) throw new Exception("You must provide a description to the challenge");
+
+            return _challenges.ReplaceOneAsync(challenge => challenge.Id == id, toUpdate);
+        }
+
+        public Task DeleteChallengeAsync(string challengeId)
+        {
+            return _challenges.DeleteOneAsync(challenge => challenge.Id == challengeId);
+        }
+
+        /*
+         * Game Stuff
+         */
         public async Task<List<WaitingChallenge>> GetWaitingChallenges(string captainId)
         {
             var captain = await (await _users.FindAsync(databaseUser => databaseUser.Id == captainId)).FirstOrDefaultAsync();
@@ -125,7 +150,9 @@ namespace IsatiWei.Api.Services
 
             foreach (var player in players)
             {
-                var challenges = await (await _challenges.FindAsync(databaseChallenge => player.WaitingCallenges.ContainsKey(databaseChallenge.Id))).ToListAsync();
+                List<string> keys = player.WaitingCallenges.Keys.ToList();
+
+                var challenges = await (await _challenges.FindAsync(databaseChallenge => keys.Contains(databaseChallenge.Id))).ToListAsync();
 
                 foreach (var challenge in challenges)
                 {
@@ -133,10 +160,10 @@ namespace IsatiWei.Api.Services
                     {
                         Id = challenge.Id,
                         ValidatorId = player.Id,
+                        ValidatorName = $"{player.FirstName} {player.LastName}",
                         Name = challenge.Name,
                         Description = challenge.Description,
-                        Base64Image = Convert.ToBase64String(challenge.Image),
-                        Base64ProofImage = Convert.ToBase64String(player.WaitingCallenges[challenge.Id])
+                        Image = challenge.Image,
                     });
                 }
             }
@@ -144,49 +171,61 @@ namespace IsatiWei.Api.Services
             return result;
         }
 
-        /*
-         * Edition stuff
-         */
-        public Task CreateChallengeAsync(Challenge toCreate)
+        public async Task<List<IndividualChallenge>> GetDoneChallenges(string playerId)
         {
-            if (string.IsNullOrWhiteSpace(toCreate.Name)) throw new Exception("You must provide a name to the challenge");
-            if (string.IsNullOrWhiteSpace(toCreate.Description)) throw new Exception("You must provide a description to the challenge");
+            var player = await (await _users.FindAsync(databaseUser => databaseUser.Id == playerId)).FirstOrDefaultAsync();
+            if (player == null) return null;
 
+            List<string> challengesIds = player.FinishedCallenges.Keys.ToList();
 
-            toCreate.Image = Convert.FromBase64String(toCreate.Base64Image);
+            var challenges = await (await _challenges.FindAsync(databaseChallenge => challengesIds.Contains(databaseChallenge.Id))).ToListAsync();
 
-            return _challenges.InsertOneAsync(toCreate);
+            List<IndividualChallenge> result = new List<IndividualChallenge>();
+
+            foreach (var challenge in challenges)
+            {
+                result.Add(new IndividualChallenge()
+                {
+                    Id = challenge.Id,
+                    Name = challenge.Name,
+                    Description = challenge.Description,
+                    Image = challenge.Image,
+                    Value = challenge.Value,
+                    WaitingValidation = player.WaitingCallenges.ContainsKey(challenge.Id),
+                    NumberLeft = (player.FinishedCallenges.ContainsKey(challenge.Id)) ? challenge.NumberOfRepetitions - player.FinishedCallenges[challenge.Id] : challenge.NumberOfRepetitions
+
+                });
+            }
+
+            return result;
         }
 
-        public Task UpdateChallengeAsync(string id, Challenge toUpdate)
+        public async Task<byte[]> GetProofImage(String challengeId, String playerId)
         {
-            if (string.IsNullOrWhiteSpace(toUpdate.Id)) throw new Exception("The id must be provided in the body");
-            if (string.IsNullOrWhiteSpace(toUpdate.Name)) throw new Exception("You must provide a name to the challenge");
-            if (string.IsNullOrWhiteSpace(toUpdate.Description)) throw new Exception("You must provide a description to the challenge");
+            var player = await (await _users.FindAsync(databaseUser => databaseUser.Id == playerId)).FirstOrDefaultAsync();
+            if (player == null) return null;
+            if (!player.WaitingCallenges.ContainsKey(challengeId)) return null;
 
-            toUpdate.Image = Convert.FromBase64String(toUpdate.Base64Image);
+            var imageId = player.WaitingCallenges[challengeId];
 
-            return _challenges.ReplaceOneAsync(challenge => challenge.Id == id, toUpdate);
+            return await _gridFS.DownloadAsBytesAsync(imageId);
+            //return player.WaitingCallenges[challengeId];
         }
 
-        public Task DeleteChallengeAsync(string challengeId)
-        {
-            return _challenges.DeleteOneAsync(challenge => challenge.Id == challengeId);
-        }
-
-        /*
-         * Game Stuff
-         */
         public async Task SubmitChallengeForValidationAsync(string userId, string challengeId, byte[] proofImage)
         {
             User user = await (await _users.FindAsync(databaseUser => databaseUser.Id == userId)).FirstOrDefaultAsync();
             if (user == null) throw new Exception("The user doesn't exist");
+            if (user.Role != UserRoles.Default) throw new Exception("Only players can submit validations");
+            if (user.WaitingCallenges.ContainsKey(challengeId)) throw new Exception("This challenge is already waiting for validation");
 
             Challenge challenge = await (await _challenges.FindAsync(databaseChallenge => databaseChallenge.Id == challengeId)).FirstOrDefaultAsync();
             if (challenge == null) throw new Exception("The challenge doesn't exist");
             if (challenge.IsForTeam) throw new Exception("You can't submit team challenge to validation");
 
-            user.WaitingCallenges[challenge.Id] = proofImage;
+            //user.WaitingCallenges[challenge.Id] = proofImage;
+            var proofImageId = await _gridFS.UploadFromBytesAsync($"proof_{userId}{challengeId}", proofImage);
+            user.WaitingCallenges[challenge.Id] = proofImageId;
 
             await _users.ReplaceOneAsync(databaseUser => databaseUser.Id == user.Id, user);
         }
