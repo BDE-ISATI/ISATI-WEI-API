@@ -41,6 +41,7 @@ namespace IsatiWei.Api
             services.AddSingleton<AuthenticationService>();
             services.AddSingleton<TeamService>();
             services.AddSingleton<ChallengeService>();
+            services.AddSingleton<UserService>();
 
             // Swagger
             services.AddSwaggerGen(c =>

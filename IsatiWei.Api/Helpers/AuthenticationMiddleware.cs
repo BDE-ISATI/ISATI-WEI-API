@@ -56,7 +56,6 @@ namespace IsatiWei.Api.Helpers
 
                 // Only administrators can add/update/delete things
                 if (context.Request.Path.Value.ToLower().Contains("add") ||
-                    context.Request.Path.Value.ToLower().Contains("update") ||
                     context.Request.Path.Value.ToLower().Contains("delete"))
                 {
                     if (await _authenticationService.CheckCredentialAsync(id, passwordHash, UserRoles.Administrator))
