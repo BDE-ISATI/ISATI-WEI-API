@@ -80,5 +80,23 @@ namespace IsatiWei.Api.Controllers
             return Ok(user);
         }
 
+        /*
+         * Put
+         */
+        [HttpPut("update/password")]
+        public async Task<ActionResult<PasswordUpdate>> UpdatePassword([FromBody] PasswordUpdate passwordUpdateModel, [FromHeader] string authorization)
+        {
+            try
+            {
+                passwordUpdateModel = await _authenticationService.UpdatePassword(UserUtilities.UserIdFromAuth(authorization), passwordUpdateModel.OldPassword, passwordUpdateModel.NewPassword);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+
+            return Ok(passwordUpdateModel);
+        }
+
     }
 }

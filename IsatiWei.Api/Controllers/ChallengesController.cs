@@ -259,7 +259,7 @@ namespace IsatiWei.Api.Controllers
         /// <param name="id">The challenge's ID you want to update</param>
         /// <param name="toUpdate"></param>
         /// <returns>Not found if the challenge ID doesn't exist, Ok otherwise</returns>
-        [HttpPut("update/{id:length(24)}")]
+        [HttpPut("admin_update/{id:length(24)}")]
         public async Task<IActionResult> UpdateChallenge(string id, [FromBody] Challenge toUpdate)
         {
             bool exist = (await _challengeService.GetChallengeAsync(id)) != null;

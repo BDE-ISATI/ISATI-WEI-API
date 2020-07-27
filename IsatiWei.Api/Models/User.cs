@@ -4,6 +4,8 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace IsatiWei.Api.Models
@@ -22,6 +24,22 @@ namespace IsatiWei.Api.Models
             if (checkedRole == Default) return permission == Default;
 
             return false;
+        }
+    }
+
+    static class UserUtilities
+    {
+        public static string UserIdFromAuth(string authorization)
+        {
+            string encodedUsernamePassword = authorization.Substring("Basic ".Length).Trim();
+            Encoding encoding = Encoding.GetEncoding("iso-8859-1");
+            string idAndPassword = encoding.GetString(Convert.FromBase64String(encodedUsernamePassword));
+
+            int seperatorIndex = idAndPassword.IndexOf(':');
+
+            var userId = idAndPassword.Substring(0, seperatorIndex);
+
+            return userId;
         }
     }
 
@@ -55,7 +73,7 @@ namespace IsatiWei.Api.Models
 
         [JsonIgnore]
         public Dictionary<string, ObjectId> WaitingCallenges; // Since this one contains proof images,
-                                                            // we don't want to transfer it anywhere
+                                                              // we don't want to transfer it anywhere
         public Dictionary<string, int> FinishedCallenges;
     }
 }

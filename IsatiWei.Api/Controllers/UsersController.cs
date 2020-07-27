@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using IsatiWei.Api.Models;
 using IsatiWei.Api.Models.Authentication;
 using IsatiWei.Api.Services;
 using Microsoft.AspNetCore.Http;
@@ -32,7 +33,7 @@ namespace IsatiWei.Api.Controllers
         {
             try
             {
-                await _userService.UpdateProfilePicture(UserIdFromAuth(authorization), profilePictureUpdate.ProfilePicture);
+                await _userService.UpdateProfilePicture(UserUtilities.UserIdFromAuth(authorization), profilePictureUpdate.ProfilePicture);
             } 
             catch (Exception e)
             {
@@ -42,20 +43,26 @@ namespace IsatiWei.Api.Controllers
             return Ok();
         }
 
-        /*
-         * Utility
-         */
-        private string UserIdFromAuth(string authorization)
+        /// <summary>
+        /// Update the profile picture for user by admin
+        /// </summary>
+        /// <param name="user"></param>
+        /// <param name="profilePictureUpdate"></param>
+        /// <param name="authorization"></param>
+        /// <returns></returns>
+        [HttpPut("admin_update/{user:length(24)}profile_picture")]
+        public async Task<IActionResult> UpdateProfilePictureByAdmin(string user, [FromBody] UserProfilePictureUpdate profilePictureUpdate, [FromHeader] string authorization)
         {
-            string encodedUsernamePassword = authorization.Substring("Basic ".Length).Trim();
-            Encoding encoding = Encoding.GetEncoding("iso-8859-1");
-            string idAndPassword = encoding.GetString(Convert.FromBase64String(encodedUsernamePassword));
+            try
+            {
+                await _userService.UpdateProfilePicture(user, profilePictureUpdate.ProfilePicture);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
 
-            int seperatorIndex = idAndPassword.IndexOf(':');
-
-            var userId = idAndPassword.Substring(0, seperatorIndex);
-
-            return userId;
+            return Ok();
         }
     }
 }

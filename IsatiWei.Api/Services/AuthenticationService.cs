@@ -1,4 +1,5 @@
 ﻿using IsatiWei.Api.Models;
+using IsatiWei.Api.Models.Authentication;
 using IsatiWei.Api.Settings;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -75,6 +76,34 @@ namespace IsatiWei.Api.Services
         /* 
          * Password and credential related functions
          */
+        public async Task<PasswordUpdate> UpdatePassword(string userId, string oldPassword, string newPassword)
+        {
+            // Here the user can login with both his email or his real username, that's why we check both
+            var user = await (await _users.FindAsync(user => user.Id == userId)).FirstOrDefaultAsync();
+
+            if (user == null)
+            {
+                throw new Exception("User doesn't exist");
+            }
+
+            if (!VerifyPasswordHash(oldPassword, user.PasswordHash, user.PasswordSalt))
+            {
+                throw new Exception("The old password is incorrect");
+            }
+
+            CreatePasswordHash(newPassword, out byte[] passwordHash, out byte[] passwordSalt);
+
+            user.PasswordHash = Convert.ToBase64String(passwordHash);
+            user.PasswordSalt = passwordSalt;
+
+            _users.ReplaceOne(databaseUser => databaseUser.Id == user.Id, user);
+
+            return new PasswordUpdate()
+            {
+                NewPasswordHash = user.PasswordHash
+            };
+        }
+
         // We need to be able to check credential with only the password hash
         public async Task<bool> CheckCredentialAsync(string id, string passwordHash, string neededRole)
         {

@@ -120,7 +120,7 @@ namespace IsatiWei.Api.Controllers
         /// <param name="id"></param>
         /// <param name="team"></param>
         /// <returns></returns>
-        [HttpPut("update/{id:length(24)}")]
+        [HttpPut("admin_update/{id:length(24)}")]
         public async Task<IActionResult> UpdateTeam(string id, [FromBody] Team team)
         {
             try
