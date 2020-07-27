@@ -89,8 +89,7 @@ namespace IsatiWei.Api.Services
                     Description = challenge.Description,
                     Image = challenge.Image,
                     Value = challenge.Value,
-                    NumberLeft = challenge.NumberOfRepetitions - team.FinishedCallenges[challenge.Id]
-
+                    NumberLeft = (team.FinishedCallenges.ContainsKey(challenge.Id)) ? challenge.NumberOfRepetitions - team.FinishedCallenges[challenge.Id] : challenge.NumberOfRepetitions
                 });
             }
 
