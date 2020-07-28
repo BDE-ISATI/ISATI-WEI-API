@@ -95,13 +95,13 @@ namespace IsatiWei.Api.Services
             return team;
         }
 
-        public async Task UpdateTeamAsync(string teamId, Team toUpdate)
+        public async Task UpdateTeamAsync(Team toUpdate)
         {
             if (string.IsNullOrWhiteSpace(toUpdate.Id)) throw new Exception("The id must be provided in the body");
             if (string.IsNullOrWhiteSpace(toUpdate.Name)) throw new ArgumentException("You must provide a name for the team", "name");
             if (string.IsNullOrWhiteSpace(toUpdate.CaptainId)) throw new ArgumentException("You must provide a captain for the team", "captainId");
 
-            Team current = await (await _teams.FindAsync(databaseTeam => databaseTeam.Id == teamId)).FirstOrDefaultAsync();
+            Team current = await (await _teams.FindAsync(databaseTeam => databaseTeam.Id == toUpdate.Id)).FirstOrDefaultAsync();
             if (current == null) throw new Exception("The team you want to update doesn't exist");
 
             // We need to change the role of the old captain

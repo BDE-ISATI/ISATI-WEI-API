@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace IsatiWei.Api.Models.Game
 {
-    public class ProofImage
+    public class ChallengeProofImage
     {
         public byte[] Image { get; set; }
     }

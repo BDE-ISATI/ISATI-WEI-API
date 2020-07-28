@@ -23,13 +23,34 @@ namespace IsatiWei.Api.Controllers
         }
 
         /// <summary>
+        /// Get the user profile picture
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [HttpGet("{id:length(24)}/profile_picture")]
+        public async Task<ActionResult<UserProfilePicture>> GetProfilePicture(string id)
+        {
+            var profilePicture = await _userService.GetProfilePicture(id);
+
+            if (profilePicture == null)
+            {
+                return NoContent();
+            }
+
+            return Ok(new UserProfilePicture()
+            {
+                ProfilePicture = profilePicture
+            });
+        }
+
+        /// <summary>
         /// Update the profile picture for user
         /// </summary>
         /// <param name="profilePictureUpdate"></param>
         /// <param name="authorization"></param>
         /// <returns></returns>
         [HttpPut("update/profile_picture")]
-        public async Task<IActionResult> UpdateProfilePicture([FromBody] UserProfilePictureUpdate profilePictureUpdate, [FromHeader] string authorization)
+        public async Task<IActionResult> UpdateProfilePicture([FromBody] UserProfilePicture profilePictureUpdate, [FromHeader] string authorization)
         {
             try
             {
@@ -44,18 +65,16 @@ namespace IsatiWei.Api.Controllers
         }
 
         /// <summary>
-        /// Update the profile picture for user by admin
+        /// Update a user
         /// </summary>
-        /// <param name="user"></param>
-        /// <param name="profilePictureUpdate"></param>
-        /// <param name="authorization"></param>
+        /// <param name="toUpdate"></param>
         /// <returns></returns>
-        [HttpPut("admin_update/{user:length(24)}profile_picture")]
-        public async Task<IActionResult> UpdateProfilePictureByAdmin(string user, [FromBody] UserProfilePictureUpdate profilePictureUpdate, [FromHeader] string authorization)
+        [HttpPut("admin_update")]
+        public async Task<IActionResult> UpdateUser([FromBody] User toUpdate)
         {
             try
             {
-                await _userService.UpdateProfilePicture(user, profilePictureUpdate.ProfilePicture);
+                await _userService.UpdateUserAsync(toUpdate);
             }
             catch (Exception e)
             {

@@ -125,14 +125,14 @@ namespace IsatiWei.Api.Services
             return toCreate;
         }
 
-        public async Task UpdateChallengeAsync(string id, Challenge toUpdate)
+        public async Task UpdateChallengeAsync(Challenge toUpdate)
         {
             if (string.IsNullOrWhiteSpace(toUpdate.Id)) throw new Exception("The id must be provided in the body");
             if (string.IsNullOrWhiteSpace(toUpdate.Name)) throw new Exception("You must provide a name to the challenge");
             if (string.IsNullOrWhiteSpace(toUpdate.Description)) throw new Exception("You must provide a description to the challenge");
 
             // If we don't do it manally old images are never deleted
-            var oldChallenge = await GetChallengeAsync(id);
+            var oldChallenge = await GetChallengeAsync(toUpdate.Id);
             if (oldChallenge != null)
             {
                 await _gridFS.DeleteAsync(oldChallenge.ImageId);
@@ -142,7 +142,7 @@ namespace IsatiWei.Api.Services
             toUpdate.Image = null;
             toUpdate.ImageId = challengeImage;
 
-            await _challenges.ReplaceOneAsync(challenge => challenge.Id == id, toUpdate);
+            await _challenges.ReplaceOneAsync(challenge => challenge.Id == toUpdate.Id, toUpdate);
         }
 
         public async Task DeleteChallengeAsync(string challengeId)

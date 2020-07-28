@@ -53,7 +53,9 @@ namespace IsatiWei.Api.Models
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; }
 
+        [BsonIgnore]
         public byte[] ProfilePicture { get; set; }
+        public ObjectId ProfilePictureId { get; set; }
 
         public string FirstName { get; set; }
         public string LastName { get; set; }

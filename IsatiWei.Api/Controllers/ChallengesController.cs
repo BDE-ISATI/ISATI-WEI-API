@@ -90,7 +90,7 @@ namespace IsatiWei.Api.Controllers
         [HttpGet("waiting")]
         public async Task<ActionResult<List<WaitingChallenge>>> GetWaitingChallenges([FromHeader] string authorization)
         {
-            List<WaitingChallenge> result = await _challengeService.GetWaitingChallenges(UserIdFromAuth(authorization));
+            List<WaitingChallenge> result = await _challengeService.GetWaitingChallenges(UserUtilities.UserIdFromAuth(authorization));
 
             return Ok(result);
         }
@@ -113,10 +113,15 @@ namespace IsatiWei.Api.Controllers
             return Ok(result);
         }
 
-        [HttpGet("image/{challenge:length(24)}")]
-        public async Task<ActionResult<ChallengeImage>> GetProofImage(string challenge)
+        /// <summary>
+        /// Get the challenge image
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [HttpGet("{id:length(24)}/image")]
+        public async Task<ActionResult<ChallengeImage>> GetChallengeImage(string id)
         {
-            var result = await _challengeService.GetChallengeImage(challenge);
+            var result = await _challengeService.GetChallengeImage(id);
 
             if (result == null)
             {
@@ -132,20 +137,20 @@ namespace IsatiWei.Api.Controllers
         /// <summary>
         /// Get the proof image for a challenge for a player
         /// </summary>
-        /// <param name="challenge"></param>
+        /// <param name="id"></param>
         /// <param name="player"></param>
         /// <returns></returns>
-        [HttpGet("proof/{challenge:length(24)}/{player:length(24)}")]
-        public async Task<ActionResult<ProofImage>> GetProofImage(string challenge, string player)
+        [HttpGet("{id:length(24)}/proof/{player:length(24)}")]
+        public async Task<ActionResult<ChallengeProofImage>> GetProofImage(string id, string player)
         {
-            var result = await _challengeService.GetProofImage(challenge, player);
+            var result = await _challengeService.GetProofImage(id, player);
 
             if (result == null)
             {
                 return NotFound();
             }
 
-            return Ok(new ProofImage()
+            return Ok(new ChallengeProofImage()
             {
                 Image = result
             });
@@ -189,16 +194,15 @@ namespace IsatiWei.Api.Controllers
         ///         "proofImage": "Base64 string of the proof image"
         ///     }
         /// </remarks>
-        /// <param name="id"></param>
         /// <param name="toSubmit"></param>
         /// <param name="authorization"></param>
         /// <returns></returns>
-        [HttpPost("{id:length(24)}/submit")]
-        public async Task<IActionResult> SubmitChallengeForValidation(string id, [FromBody] ChallengeSubmission toSubmit, [FromHeader] string authorization)
+        [HttpPost("submit")]
+        public async Task<IActionResult> SubmitChallengeForValidation([FromBody] ChallengeSubmission toSubmit, [FromHeader] string authorization)
         {
             try
             {
-                await _challengeService.SubmitChallengeForValidationAsync(UserIdFromAuth(authorization), id, toSubmit.ProofImage);
+                await _challengeService.SubmitChallengeForValidationAsync(UserUtilities.UserIdFromAuth(authorization), toSubmit.ChallengeId, toSubmit.ProofImage);
             }
             catch (Exception e)
             {
@@ -219,15 +223,14 @@ namespace IsatiWei.Api.Controllers
         ///         "validatorId": "Id of the player"
         ///     }
         /// </remarks>
-        /// <param name="id"></param>
         /// <param name="toValidate"></param>
         /// <returns></returns>
-        [HttpPost("{id:length(24)}/validate_for_user")]
-        public async Task<IActionResult> ValidateChallengeForUser(string id, [FromBody] ChallengeSubmission toValidate)
+        [HttpPost("validate_for_user")]
+        public async Task<IActionResult> ValidateChallengeForUser([FromBody] ChallengeSubmission toValidate)
         {
             try
             {
-                await _challengeService.ValidateChallengeForUserAsync(toValidate.ValidatorId, id);
+                await _challengeService.ValidateChallengeForUserAsync(toValidate.ValidatorId,toValidate.ChallengeId);
             }
             catch (Exception e)
             {
@@ -248,15 +251,14 @@ namespace IsatiWei.Api.Controllers
         ///         "validatorId": "Id of the team"
         ///     }
         /// </remarks>
-        /// <param name="id"></param>
         /// <param name="toValidate"></param>
         /// <returns></returns>
-        [HttpPost("{id:length(24)}/validate_for_team")]
-        public async Task<IActionResult> ValidateChallengeForTeam(string id, [FromBody] ChallengeSubmission toValidate)
+        [HttpPost("validate_for_team")]
+        public async Task<IActionResult> ValidateChallengeForTeam([FromBody] ChallengeSubmission toValidate)
         {
             try
             {
-                await _challengeService.ValidateChallengeForTeamAsync(toValidate.ValidatorId, id);
+                await _challengeService.ValidateChallengeForTeamAsync(toValidate.ValidatorId, toValidate.ChallengeId);
             }
             catch (Exception e)
             {
@@ -272,13 +274,12 @@ namespace IsatiWei.Api.Controllers
         /// <summary>
         /// Update the challenge
         /// </summary>
-        /// <param name="id">The challenge's ID you want to update</param>
         /// <param name="toUpdate"></param>
         /// <returns>Not found if the challenge ID doesn't exist, Ok otherwise</returns>
-        [HttpPut("admin_update/{id:length(24)}")]
-        public async Task<IActionResult> UpdateChallenge(string id, [FromBody] Challenge toUpdate)
+        [HttpPut("admin_update")]
+        public async Task<IActionResult> UpdateChallenge([FromBody] Challenge toUpdate)
         {
-            bool exist = (await _challengeService.GetChallengeAsync(id)) != null;
+            bool exist = (await _challengeService.GetChallengeAsync(toUpdate.Id)) != null;
 
             if (!exist)
             {
@@ -287,7 +288,7 @@ namespace IsatiWei.Api.Controllers
 
             try
             {
-                await _challengeService.UpdateChallengeAsync(id, toUpdate);
+                await _challengeService.UpdateChallengeAsync(toUpdate);
             }
             catch (Exception e)
             {
@@ -318,22 +319,6 @@ namespace IsatiWei.Api.Controllers
             await _challengeService.DeleteChallengeAsync(id);
 
             return Ok();
-        }
-
-        /*
-         * Utility
-         */
-        private string UserIdFromAuth(string authorization)
-        {
-            string encodedUsernamePassword = authorization.Substring("Basic ".Length).Trim();
-            Encoding encoding = Encoding.GetEncoding("iso-8859-1");
-            string idAndPassword = encoding.GetString(Convert.FromBase64String(encodedUsernamePassword));
-
-            int seperatorIndex = idAndPassword.IndexOf(':');
-
-            var userId = idAndPassword.Substring(0, seperatorIndex);
-
-            return userId;
         }
     }
 }

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace IsatiWei.Api.Models.Authentication
 {
-    public class UserProfilePictureUpdate
+    public class UserProfilePicture
     {
         public byte[] ProfilePicture { get; set; }
     }

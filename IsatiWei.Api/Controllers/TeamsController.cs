@@ -117,15 +117,14 @@ namespace IsatiWei.Api.Controllers
         /// <summary>
         /// Update a team
         /// </summary>
-        /// <param name="id"></param>
         /// <param name="team"></param>
         /// <returns></returns>
-        [HttpPut("admin_update/{id:length(24)}")]
-        public async Task<IActionResult> UpdateTeam(string id, [FromBody] Team team)
+        [HttpPut("admin_update")]
+        public async Task<IActionResult> UpdateTeam([FromBody] Team team)
         {
             try
             {
-                await _teamService.UpdateTeamAsync(id, team);
+                await _teamService.UpdateTeamAsync(team);
             }
             catch (Exception e)
             {
@@ -146,15 +145,15 @@ namespace IsatiWei.Api.Controllers
         ///           "id": "5f1aa9610cb5aa794889bdd4"
         ///      }
         /// </remarks>
-        /// <param name="teamId"></param>
+        /// <param name="id"></param>
         /// <param name="userToAdd"></param>
         /// <returns></returns>
-        [HttpPut("{teamId:length(24)}/add_user")]
-        public async Task<IActionResult> AddUserToTeam(string teamId, [FromBody] User userToAdd)
+        [HttpPut("{id:length(24)}/add_user")]
+        public async Task<IActionResult> AddUserToTeam(string id, [FromBody] User userToAdd)
         {
             try
             {
-                await _teamService.AddUserToTeam(teamId, userToAdd.Id);
+                await _teamService.AddUserToTeam(id, userToAdd.Id);
             }
             catch (Exception e)
             {
