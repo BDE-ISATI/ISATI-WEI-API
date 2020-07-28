@@ -1,6 +1,7 @@
 ﻿using IsatiWei.Api.Models;
 using IsatiWei.Api.Models.Game;
 using IsatiWei.Api.Settings;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.GridFS;
 using System;
@@ -52,7 +53,7 @@ namespace IsatiWei.Api.Services
                 return null;
             }
 
-            return await _gridFS.DownloadAsBytesAsync(challenge.ImageId);
+            return await _gridFS.DownloadAsBytesAsync(new ObjectId(challenge.ImageId));
 
         }
 
@@ -70,6 +71,7 @@ namespace IsatiWei.Api.Services
                 result.Add(new IndividualChallenge()
                 {
                     Id = challenge.Id,
+                    ImageId = challenge.ImageId,
                     Name = challenge.Name,
                     Description = challenge.Description,
                     Value = challenge.Value,
@@ -96,6 +98,7 @@ namespace IsatiWei.Api.Services
                 result.Add(new TeamChallenge()
                 {
                     Id = challenge.Id,
+                    ImageId = challenge.ImageId,
                     Name = challenge.Name,
                     Description = challenge.Description,
                     Value = challenge.Value,
@@ -118,7 +121,7 @@ namespace IsatiWei.Api.Services
 
             var challengeImage = await _gridFS.UploadFromBytesAsync($"challenge_{toCreate.Id}", toCreate.Image);
             toCreate.Image = null;
-            toCreate.ImageId = challengeImage;
+            toCreate.ImageId = challengeImage.ToString();
 
             await _challenges.ReplaceOneAsync(databaseChallenge => databaseChallenge.Id == toCreate.Id, toCreate);
 
@@ -135,12 +138,12 @@ namespace IsatiWei.Api.Services
             var oldChallenge = await GetChallengeAsync(toUpdate.Id);
             if (oldChallenge != null)
             {
-                await _gridFS.DeleteAsync(oldChallenge.ImageId);
+                await _gridFS.DeleteAsync(new ObjectId(oldChallenge.ImageId));
             }
 
             var challengeImage = await _gridFS.UploadFromBytesAsync($"challenge_{toUpdate.Id}", toUpdate.Image);
             toUpdate.Image = null;
-            toUpdate.ImageId = challengeImage;
+            toUpdate.ImageId = challengeImage.ToString();
 
             await _challenges.ReplaceOneAsync(challenge => challenge.Id == toUpdate.Id, toUpdate);
         }
@@ -150,7 +153,7 @@ namespace IsatiWei.Api.Services
             var oldChallenge = await GetChallengeAsync(challengeId);
             if (oldChallenge != null)
             {
-                await _gridFS.DeleteAsync(oldChallenge.ImageId);
+                await _gridFS.DeleteAsync(new ObjectId(oldChallenge.ImageId));
             }
 
             await _challenges.DeleteOneAsync(challenge => challenge.Id == challengeId);
@@ -191,6 +194,7 @@ namespace IsatiWei.Api.Services
                     result.Add(new WaitingChallenge()
                     {
                         Id = challenge.Id,
+                        ImageId = challenge.ImageId,
                         ValidatorId = player.Id,
                         ValidatorName = $"{player.FirstName} {player.LastName}",
                         Name = challenge.Name,
@@ -218,6 +222,7 @@ namespace IsatiWei.Api.Services
                 result.Add(new IndividualChallenge()
                 {
                     Id = challenge.Id,
+                    ImageId = challenge.ImageId,
                     Name = challenge.Name,
                     Description = challenge.Description,
                     Value = challenge.Value,

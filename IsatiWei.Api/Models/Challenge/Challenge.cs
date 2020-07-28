@@ -18,8 +18,8 @@ namespace IsatiWei.Api.Models
         public string Description { get; set; }
         [BsonIgnore]
         public byte[] Image { get; set; }
-        [JsonIgnore]
-        public ObjectId ImageId { get; set; }
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string ImageId { get; set; }
         public int Value { get; set; }
         public int NumberOfRepetitions { get; set; }
 

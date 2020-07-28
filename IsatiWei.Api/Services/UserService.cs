@@ -57,7 +57,7 @@ namespace IsatiWei.Api.Services
             toUpdate.ProfilePicture = null;
             toUpdate.ProfilePictureId = userImage;
 
-            await _users.ReplaceOneAsync(databaseUser => databaseUser.Id == toUpdate, toUpdate);
+            await _users.ReplaceOneAsync(databaseUser => databaseUser.Id == toUpdate.Id, toUpdate);
         }
 
         /*
