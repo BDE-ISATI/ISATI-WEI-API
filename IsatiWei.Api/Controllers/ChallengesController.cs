@@ -113,6 +113,22 @@ namespace IsatiWei.Api.Controllers
             return Ok(result);
         }
 
+        [HttpGet("image/{challenge:length(24)}")]
+        public async Task<ActionResult<ChallengeImage>> GetProofImage(string challenge)
+        {
+            var result = await _challengeService.GetChallengeImage(challenge);
+
+            if (result == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(new ChallengeImage()
+            {
+                Image = result
+            });
+        }
+
         /// <summary>
         /// Get the proof image for a challenge for a player
         /// </summary>

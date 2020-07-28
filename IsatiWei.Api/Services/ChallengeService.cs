@@ -44,6 +44,18 @@ namespace IsatiWei.Api.Services
             return await challenges.ToListAsync();
         }
 
+        public async Task<byte[]> GetChallengeImage(string challengeId)
+        {
+            var challenge = await GetChallengeAsync(challengeId);
+            if (challenge == null)
+            {
+                return null;
+            }
+
+            return await _gridFS.DownloadAsBytesAsync(challenge.ImageId);
+
+        }
+
         public async Task<List<IndividualChallenge>> GetChallengeForPlayerAsync(string playerId)
         {
             var challenges = await (await _challenges.FindAsync(databaseChallenge => !databaseChallenge.IsForTeam && databaseChallenge.IsVisible)).ToListAsync();
@@ -60,7 +72,6 @@ namespace IsatiWei.Api.Services
                     Id = challenge.Id,
                     Name = challenge.Name,
                     Description = challenge.Description,
-                    Image = challenge.Image,
                     Value = challenge.Value,
                     WaitingValidation = player.WaitingCallenges.ContainsKey(challenge.Id),
                     NumberLeft = (player.FinishedCallenges.ContainsKey(challenge.Id)) ? challenge.NumberOfRepetitions - player.FinishedCallenges[challenge.Id] : challenge.NumberOfRepetitions
@@ -87,7 +98,6 @@ namespace IsatiWei.Api.Services
                     Id = challenge.Id,
                     Name = challenge.Name,
                     Description = challenge.Description,
-                    Image = challenge.Image,
                     Value = challenge.Value,
                     NumberLeft = (team.FinishedCallenges.ContainsKey(challenge.Id)) ? challenge.NumberOfRepetitions - team.FinishedCallenges[challenge.Id] : challenge.NumberOfRepetitions
                 });
@@ -106,21 +116,44 @@ namespace IsatiWei.Api.Services
 
             await _challenges.InsertOneAsync(toCreate);
 
+            var challengeImage = await _gridFS.UploadFromBytesAsync($"challenge_{toCreate.Id}", toCreate.Image);
+            toCreate.Image = null;
+            toCreate.ImageId = challengeImage;
+
+            await _challenges.ReplaceOneAsync(databaseChallenge => databaseChallenge.Id == toCreate.Id, toCreate);
+
             return toCreate;
         }
 
-        public Task UpdateChallengeAsync(string id, Challenge toUpdate)
+        public async Task UpdateChallengeAsync(string id, Challenge toUpdate)
         {
             if (string.IsNullOrWhiteSpace(toUpdate.Id)) throw new Exception("The id must be provided in the body");
             if (string.IsNullOrWhiteSpace(toUpdate.Name)) throw new Exception("You must provide a name to the challenge");
             if (string.IsNullOrWhiteSpace(toUpdate.Description)) throw new Exception("You must provide a description to the challenge");
 
-            return _challenges.ReplaceOneAsync(challenge => challenge.Id == id, toUpdate);
+            // If we don't do it manally old images are never deleted
+            var oldChallenge = await GetChallengeAsync(id);
+            if (oldChallenge != null)
+            {
+                await _gridFS.DeleteAsync(oldChallenge.ImageId);
+            }
+
+            var challengeImage = await _gridFS.UploadFromBytesAsync($"challenge_{toUpdate.Id}", toUpdate.Image);
+            toUpdate.Image = null;
+            toUpdate.ImageId = challengeImage;
+
+            await _challenges.ReplaceOneAsync(challenge => challenge.Id == id, toUpdate);
         }
 
-        public Task DeleteChallengeAsync(string challengeId)
+        public async Task DeleteChallengeAsync(string challengeId)
         {
-            return _challenges.DeleteOneAsync(challenge => challenge.Id == challengeId);
+            var oldChallenge = await GetChallengeAsync(challengeId);
+            if (oldChallenge != null)
+            {
+                await _gridFS.DeleteAsync(oldChallenge.ImageId);
+            }
+
+            await _challenges.DeleteOneAsync(challenge => challenge.Id == challengeId);
         }
 
         /*
@@ -161,8 +194,7 @@ namespace IsatiWei.Api.Services
                         ValidatorId = player.Id,
                         ValidatorName = $"{player.FirstName} {player.LastName}",
                         Name = challenge.Name,
-                        Description = challenge.Description,
-                        Image = challenge.Image,
+                        Description = challenge.Description
                     });
                 }
             }
@@ -188,7 +220,6 @@ namespace IsatiWei.Api.Services
                     Id = challenge.Id,
                     Name = challenge.Name,
                     Description = challenge.Description,
-                    Image = challenge.Image,
                     Value = challenge.Value,
                     WaitingValidation = player.WaitingCallenges.ContainsKey(challenge.Id),
                     NumberLeft = (player.FinishedCallenges.ContainsKey(challenge.Id)) ? challenge.NumberOfRepetitions - player.FinishedCallenges[challenge.Id] : challenge.NumberOfRepetitions

@@ -16,7 +16,10 @@ namespace IsatiWei.Api.Models
 
         public string Name { get; set; }
         public string Description { get; set; }
+        [BsonIgnore]
         public byte[] Image { get; set; }
+        [JsonIgnore]
+        public ObjectId ImageId { get; set; }
         public int Value { get; set; }
         public int NumberOfRepetitions { get; set; }
 

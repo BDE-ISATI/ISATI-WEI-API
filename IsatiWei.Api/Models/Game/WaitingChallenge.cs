@@ -16,7 +16,5 @@ namespace IsatiWei.Api.Models.Game
         public string ValidatorName { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
-        [BsonIgnore]
-        public byte[] Image { get; set; }
     }
 }
