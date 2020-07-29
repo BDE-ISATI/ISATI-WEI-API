@@ -135,16 +135,25 @@ namespace IsatiWei.Api.Services
             if (string.IsNullOrWhiteSpace(toUpdate.Name)) throw new Exception("You must provide a name to the challenge");
             if (string.IsNullOrWhiteSpace(toUpdate.Description)) throw new Exception("You must provide a description to the challenge");
 
-            // If we don't do it manally old images are never deleted
             var oldChallenge = await GetChallengeAsync(toUpdate.Id);
-            if (oldChallenge != null)
-            {
-                await _gridFS.DeleteAsync(new ObjectId(oldChallenge.ImageId));
-            }
+            if (oldChallenge == null) throw new Exception("The challenge you wan't to update doesn't exist");
 
-            var challengeImage = await _gridFS.UploadFromBytesAsync($"challenge_{toUpdate.Id}", toUpdate.Image);
-            toUpdate.Image = null;
-            toUpdate.ImageId = challengeImage.ToString();
+            if (toUpdate.ImageId == "modified")
+            {
+                // If we don't do it manally old images are never deleted
+                if (!string.IsNullOrWhiteSpace(oldChallenge.ImageId))
+                {
+                    await _gridFS.DeleteAsync(new ObjectId(oldChallenge.ImageId));
+                }
+
+                var challengeImage = await _gridFS.UploadFromBytesAsync($"challenge_{toUpdate.Id}", toUpdate.Image);
+                toUpdate.Image = null;
+                toUpdate.ImageId = challengeImage.ToString();
+            }
+            else
+            {
+                toUpdate.ImageId = oldChallenge.ImageId;
+            }
 
             await _challenges.ReplaceOneAsync(challenge => challenge.Id == toUpdate.Id, toUpdate);
         }

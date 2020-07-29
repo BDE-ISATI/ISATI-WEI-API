@@ -65,13 +65,20 @@ namespace IsatiWei.Api.Services
             var oldUser = await (await _users.FindAsync(databaseUser => databaseUser.Id == toUpdate.Id)).FirstOrDefaultAsync();
             if (oldUser == null) throw new Exception("The user doesn't exist");
 
-            if (!string.IsNullOrWhiteSpace(oldUser.ProfilePictureId) && oldUser.ProfilePictureId != toUpdate.ProfilePictureId)
+            if (toUpdate.ProfilePictureId == "modified")
             {
-                await _gridFS.DeleteAsync(new ObjectId(oldUser.ProfilePictureId));
+                if (!string.IsNullOrWhiteSpace(oldUser.ProfilePictureId))
+                {
+                    await _gridFS.DeleteAsync(new ObjectId(oldUser.ProfilePictureId));
+                }
 
                 var userImage = await _gridFS.UploadFromBytesAsync($"user_{toUpdate.Id}", toUpdate.ProfilePicture);
                 toUpdate.ProfilePicture = null;
                 toUpdate.ProfilePictureId = userImage.ToString();
+            }
+            else
+            {
+                toUpdate.ProfilePictureId = oldUser.ProfilePictureId;
             }
 
             toUpdate.WaitingCallenges = oldUser.WaitingCallenges;

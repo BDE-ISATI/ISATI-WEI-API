@@ -203,14 +203,18 @@ namespace IsatiWei.Api.Services
             current.Name = toUpdate.Name;
             current.CaptainId = toUpdate.CaptainId;
 
-            if (!string.IsNullOrWhiteSpace(current.ImageId))
+            if (toUpdate.ImageId == "modified")
             {
-                await _gridFS.DeleteAsync(new ObjectId(current.ImageId));
-            }
+                if (!string.IsNullOrWhiteSpace(current.ImageId))
+                {
+                    await _gridFS.DeleteAsync(new ObjectId(current.ImageId));
+                }
 
-            var teamImage = await _gridFS.UploadFromBytesAsync($"team_{current.Id}", toUpdate.Image);
-            current.Image = null;
-            current.ImageId = teamImage.ToString();
+                var teamImage = await _gridFS.UploadFromBytesAsync($"team_{current.Id}", toUpdate.Image);
+                current.Image = null;
+                current.ImageId = teamImage.ToString();
+            }
+                       
 
             await _teams.ReplaceOneAsync(databaseTeam => databaseTeam.Id == toUpdate.Id, current);
         }
