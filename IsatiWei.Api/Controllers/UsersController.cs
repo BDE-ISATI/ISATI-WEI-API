@@ -53,6 +53,18 @@ namespace IsatiWei.Api.Controllers
         }
 
         /// <summary>
+        /// Get the team ranking
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet("ranking")]
+        public async Task<ActionResult<List<User>>> GetUsersRankingAsync()
+        {
+            List<User> users = await _userService.GetUsersRankingAsync();
+
+            return users;
+        }
+
+        /// <summary>
         /// Get the user profile picture
         /// </summary>
         /// <param name="id"></param>

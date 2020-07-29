@@ -54,6 +54,26 @@ namespace IsatiWei.Api.Services
             return users;
         }
 
+        public async Task<List<User>> GetUsersRankingAsync()
+        {
+            var sortedUsers = await _users.Find(user => true).Sort(new BsonDocument("Score", -1)).ToListAsync();
+
+            List<User> result = new List<User>();
+
+            foreach (var user in sortedUsers)
+            {
+                if (user.Role == UserRoles.Captain || user.Role == UserRoles.Administrator)
+                {
+                    continue;
+                }
+
+                user.PasswordHash = null;
+                result.Add(user);
+            }
+
+            return result;
+        }
+
         /*
          * Edition stuff
          */

@@ -57,6 +57,21 @@ namespace IsatiWei.Api.Services
             return teams;
         }
 
+        public async Task<List<Team>> GetTeamsRankingAsync()
+        {
+            var sortedTeams = await _teams.Find(team => true).Sort(new BsonDocument("Score", -1)).ToListAsync();
+
+            foreach (var team in sortedTeams)
+            {
+                var captain = await (await _users.FindAsync(databaseUser => databaseUser.Id == team.CaptainId)).FirstOrDefaultAsync();
+                if (captain == null) continue;
+
+                team.CaptainName = $"{captain.FirstName} {captain.LastName}";
+            }
+
+            return sortedTeams;
+        }
+
         public async Task<List<User>> GetAvailableCaptain()
         {
             var teams = await GetTeamsAsync();

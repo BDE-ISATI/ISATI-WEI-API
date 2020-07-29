@@ -55,6 +55,19 @@ namespace IsatiWei.Api.Controllers
             return teams;
         }
 
+
+        /// <summary>
+        /// Get the team ranking
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet("ranking")]
+        public async Task<ActionResult<List<Team>>> GetTeamsRankingAsync()
+        {
+            List<Team> teams = await _teamService.GetTeamsRankingAsync();
+
+            return teams;
+        }
+
         /// <summary>
         /// Get the team image
         /// </summary>
