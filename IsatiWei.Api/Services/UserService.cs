@@ -119,7 +119,7 @@ namespace IsatiWei.Api.Services
             User user = await (await _users.FindAsync(databaseUser => databaseUser.Id == id)).FirstOrDefaultAsync();
             if (user == null) throw new Exception("Can't find the user");
 
-            if (string.IsNullOrWhiteSpace(user.ProfilePictureId))
+            if (!string.IsNullOrWhiteSpace(user.ProfilePictureId))
             {
                 await _gridFS.DeleteAsync(new ObjectId(user.ProfilePictureId));
             }
