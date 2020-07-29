@@ -1,7 +1,9 @@
 ﻿using IsatiWei.Api.Models;
+using IsatiWei.Api.Models.Team;
 using IsatiWei.Api.Settings;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using MongoDB.Driver.GridFS;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +16,8 @@ namespace IsatiWei.Api.Services
         private readonly IMongoCollection<Team> _teams;
         private readonly IMongoCollection<User> _users;
 
+        private readonly GridFSBucket _gridFS;
+
         public TeamService(IMongoSettings settings)
         {
             var client = new MongoClient(settings.ConnectionString);
@@ -21,6 +25,8 @@ namespace IsatiWei.Api.Services
 
             _teams = database.GetCollection<Team>("teams");
             _users = database.GetCollection<User>("users");
+
+            _gridFS = new GridFSBucket(database);
         }
 
         public async Task<Team> GetTeamAsync(string teamId)
@@ -51,29 +57,58 @@ namespace IsatiWei.Api.Services
             return teams;
         }
 
+        public async Task<List<User>> GetAvailableCaptain()
+        {
+            var teams = await GetTeamsAsync();
+            var users = await (await _users.FindAsync(databaseUser => true)).ToListAsync();
+
+            List<User> result = new List<User>();
+
+            foreach (var user in users)
+            {
+                user.PasswordHash = "";
+
+                bool isCaptain = false;
+
+                foreach (var team in teams)
+                {
+                    if (team.CaptainId == user.Id)
+                    {
+                        isCaptain = true;
+                        break;
+                    }
+                }
+
+                if (!isCaptain)
+                {
+                    result.Add(user);
+                }
+            }
+
+            return result;
+        }
+
+        /*
+         * Profile picture related functions
+         */
+        public async Task<byte[]> GetTeamImage(string teamId)
+        {
+            var team = await GetTeamAsync(teamId);
+            if (team == null || string.IsNullOrWhiteSpace(team.ImageId))
+            {
+                return null;
+            }
+
+            return await _gridFS.DownloadAsBytesAsync(new ObjectId(team.ImageId));
+        }
+
         /*
          * Edition stuff
          */
-        public async Task<Team> CreateTeamAsyn(string name, string captainId)
+        public async Task<Team> CreateTeamAsyn(string name, string captainId, byte[] teamImage)
         {
             if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("You must provide a name for the team", "name");
             if (string.IsNullOrWhiteSpace(captainId)) throw new ArgumentException("You must provide a captain for the team", "captainId");
-
-            // We change the captain role
-            User newCaptain = await (await _users.FindAsync(user => user.Id == captainId)).FirstOrDefaultAsync();
-
-            if (newCaptain == null)
-            {
-                throw new Exception("The user specified to be captain is not valid");
-            }
-
-            if (newCaptain.Role == UserRoles.Captain) throw new Exception("The user choosed is already a captain");
-
-            if (newCaptain.Role != UserRoles.Administrator)
-            {
-                newCaptain.Role = UserRoles.Captain;
-                await _users.ReplaceOneAsync(user => user.Id == newCaptain.Id, newCaptain);
-            }
 
             // We create the team
             var team = new Team()
@@ -90,7 +125,37 @@ namespace IsatiWei.Api.Services
                 throw new Exception("The team already exist");
             }
 
+            // We change the captain role
+            User newCaptain = await (await _users.FindAsync(user => user.Id == captainId)).FirstOrDefaultAsync();
+
+            if (newCaptain == null)
+            {
+                throw new Exception("The user specified to be captain is not valid");
+            }
+
+            // We must remove the new captain from it's current team
+            Team oldTeam = await GetUserTeamAsync(newCaptain.Id);
+            if (oldTeam != null)
+            {
+                oldTeam.Members.Remove(newCaptain.Id);
+                await _teams.ReplaceOneAsync(databaseTeam => databaseTeam.Id == oldTeam.Id, oldTeam);
+            }
+
+            if (newCaptain.Role == UserRoles.Captain) throw new Exception("The user choosed is already a captain");
+
+            if (newCaptain.Role != UserRoles.Administrator)
+            {
+                newCaptain.Role = UserRoles.Captain;
+                await _users.ReplaceOneAsync(user => user.Id == newCaptain.Id, newCaptain);
+            }
+
             await _teams.InsertOneAsync(team);
+
+            var databaseTeamImage = await _gridFS.UploadFromBytesAsync($"team_{team.Id}", teamImage);
+            team.Image = null;
+            team.ImageId = databaseTeamImage.ToString();
+
+            await _teams.ReplaceOneAsync(databaseTeam => databaseTeam.Id == team.Id, team);
 
             return team;
         }
@@ -110,6 +175,17 @@ namespace IsatiWei.Api.Services
                 User oldCaptain = await (await _users.FindAsync(databaseUser => databaseUser.Id == current.CaptainId)).FirstOrDefaultAsync();
                 User newCaptain = await (await _users.FindAsync(databaseUser => databaseUser.Id == toUpdate.CaptainId)).FirstOrDefaultAsync();
 
+                // We must remove the new captain from it's current team
+                Team oldTeam = await GetUserTeamAsync(newCaptain.Id);
+                if (oldTeam != null)
+                {
+                    oldTeam.Members.Remove(newCaptain.Id);
+                    await _teams.ReplaceOneAsync(databaseTeam => databaseTeam.Id == oldTeam.Id, oldTeam);
+                }
+
+                // We add the old captain to the team cause we are nice =P
+                current.Members.Add(oldCaptain.Id);
+
                 if (oldCaptain.Role != UserRoles.Administrator)
                 {
                     oldCaptain.Role = UserRoles.Default;
@@ -127,12 +203,36 @@ namespace IsatiWei.Api.Services
             current.Name = toUpdate.Name;
             current.CaptainId = toUpdate.CaptainId;
 
+            if (!string.IsNullOrWhiteSpace(current.ImageId))
+            {
+                await _gridFS.DeleteAsync(new ObjectId(current.ImageId));
+            }
+
+            var teamImage = await _gridFS.UploadFromBytesAsync($"team_{current.Id}", toUpdate.Image);
+            current.Image = null;
+            current.ImageId = teamImage.ToString();
+
             await _teams.ReplaceOneAsync(databaseTeam => databaseTeam.Id == toUpdate.Id, current);
         }
 
-        public Task DeleteTeamAsync(string teamId)
+        public async Task DeleteTeamAsync(string teamId)
         {
-            return _teams.DeleteOneAsync(team => team.Id == teamId);
+            var oldTeam = await GetTeamAsync(teamId);
+            if (oldTeam != null)
+            {
+                await _gridFS.DeleteAsync(new ObjectId(oldTeam.ImageId));
+
+                // We remove captain role for old captain
+                User oldCaptain = await (await _users.FindAsync(databaseUser => databaseUser.Id == oldTeam.CaptainId)).FirstOrDefaultAsync();
+
+                if (oldCaptain.Role != UserRoles.Administrator)
+                {
+                    oldCaptain.Role = UserRoles.Default;
+                    await _users.ReplaceOneAsync(databaseUser => databaseUser.Id == oldCaptain.Id, oldCaptain);
+                }
+            }
+
+            await _teams.DeleteOneAsync(team => team.Id == teamId);
         }
 
         /*
@@ -160,12 +260,28 @@ namespace IsatiWei.Api.Services
 
         public async Task AddUserToTeam(string teamId, string userId)
         {
-            if (await GetUserTeamAsync(userId) != null) throw new Exception("The user already belong to a team");
+            Team oldTeam = await GetUserTeamAsync(userId);
+            if (oldTeam != null)
+            {
+                oldTeam.Members.Remove(userId);
+                await _teams.ReplaceOneAsync(databaseTeam => databaseTeam.Id == oldTeam.Id, oldTeam);
+            }
 
             Team team = await (await _teams.FindAsync(databaseTeam => databaseTeam.Id == teamId)).FirstOrDefaultAsync();
             if (team == null) throw new Exception("The team doesn't exist");
 
             team.Members.Add(userId);
+
+            // We update the database
+            await _teams.ReplaceOneAsync(databaseTeam => databaseTeam.Id == team.Id, team);
+        }
+
+        public async Task RemoveUserFromeTeam(string teamId, string userId)
+        {
+            Team team = await (await _teams.FindAsync(databaseTeam => databaseTeam.Id == teamId)).FirstOrDefaultAsync();
+            if (team == null) throw new Exception("The team doesn't exist");
+
+            team.Members.Remove(userId);
 
             // We update the database
             await _teams.ReplaceOneAsync(databaseTeam => databaseTeam.Id == team.Id, team);

@@ -302,9 +302,9 @@ namespace IsatiWei.Api.Controllers
          * Delete
          */
         /// <summary>
-        /// Delete a team
+        /// Delete a challenge
         /// </summary>
-        /// <param name="id">The ID of the team you want to delete</param>
+        /// <param name="id">The ID of the challenge you want to delete</param>
         /// <returns></returns>
         [HttpDelete("delete/{id:length(24)}")]
         public async Task<IActionResult> DeleteChallenge(string id)

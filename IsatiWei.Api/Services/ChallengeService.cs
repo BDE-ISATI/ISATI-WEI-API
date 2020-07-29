@@ -1,5 +1,6 @@
 ﻿using IsatiWei.Api.Models;
 using IsatiWei.Api.Models.Game;
+using IsatiWei.Api.Models.Team;
 using IsatiWei.Api.Settings;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -185,6 +186,11 @@ namespace IsatiWei.Api.Services
 
             foreach (var player in players)
             {
+                if (player.WaitingCallenges == null)
+                {
+                    continue;
+                }
+
                 List<string> keys = player.WaitingCallenges.Keys.ToList();
 
                 var challenges = await (await _challenges.FindAsync(databaseChallenge => keys.Contains(databaseChallenge.Id))).ToListAsync();

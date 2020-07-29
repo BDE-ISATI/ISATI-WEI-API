@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using IsatiWei.Api.Models;
+using IsatiWei.Api.Models.Team;
 using IsatiWei.Api.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -55,6 +56,27 @@ namespace IsatiWei.Api.Controllers
         }
 
         /// <summary>
+        /// Get the team image
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [HttpGet("{id:length(24)}/image")]
+        public async Task<ActionResult<TeamImage>> GetTeamImage(string id)
+        {
+            var image = await _teamService.GetTeamImage(id);
+
+            if (image == null)
+            {
+                return NoContent();
+            }
+
+            return Ok(new TeamImage()
+            {
+                Image = image
+            });
+        }
+
+        /// <summary>
         /// Get team rank
         /// </summary>
         /// <param name="id">The team ID</param>
@@ -66,6 +88,18 @@ namespace IsatiWei.Api.Controllers
         }
 
         /// <summary>
+        /// Get a list of user who are not team's captain
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet("available_captains")]
+        public async Task<ActionResult<List<User>>> GetAvailableCaptains()
+        {
+            var availableCaptains = await _teamService.GetAvailableCaptain();
+
+            return Ok(availableCaptains);
+        }
+
+        /// <summary>
         /// Get the team of a specific user
         /// </summary>
         /// <param name="userId">The user's ID we want to know the team</param>
@@ -74,6 +108,11 @@ namespace IsatiWei.Api.Controllers
         public async Task<ActionResult<Team>> GetTeamForUser(string userId)
         {
             Team team = await _teamService.GetUserTeamAsync(userId);
+
+            if (team == null)
+            {
+                return NoContent();
+            }
 
             return Ok(team);
         }
@@ -101,7 +140,7 @@ namespace IsatiWei.Api.Controllers
         {
             try
             {
-                team = await _teamService.CreateTeamAsyn(team.Name, team.CaptainId);
+                team = await _teamService.CreateTeamAsyn(team.Name, team.CaptainId, team.Image);
             }
             catch (Exception e)
             {
@@ -159,6 +198,20 @@ namespace IsatiWei.Api.Controllers
             {
                 return BadRequest(e.Message);
             }
+
+            return Ok();
+        }
+
+        /// <summary>
+        /// Remove a user from a team
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="userToAdd"></param>
+        /// <returns></returns>
+        [HttpPut("{id:length(24)}/remove_user")]
+        public async Task<IActionResult> RemoveUserFromTeam(string id, [FromBody] User userToAdd)
+        {
+            await _teamService.RemoveUserFromeTeam(id, userToAdd.Id);
 
             return Ok();
         }

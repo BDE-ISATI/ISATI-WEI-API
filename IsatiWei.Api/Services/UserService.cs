@@ -54,24 +54,43 @@ namespace IsatiWei.Api.Services
             return users;
         }
 
+        /*
+         * Edition stuff
+         */
         public async Task UpdateUserAsync(User toUpdate)
         {
             if (string.IsNullOrWhiteSpace(toUpdate.Id)) throw new Exception("The id must be provided in the body");
             
             // If we don't do it manally old images are never deleted
-            var oldUser = await GetUserAsync(toUpdate.Id);
+            var oldUser = await (await _users.FindAsync(databaseUser => databaseUser.Id == toUpdate.Id)).FirstOrDefaultAsync();
             if (oldUser == null) throw new Exception("The user doesn't exist");
 
-            if (string.IsNullOrWhiteSpace(oldUser.ProfilePictureId))
+            if (!string.IsNullOrWhiteSpace(oldUser.ProfilePictureId) && oldUser.ProfilePictureId != toUpdate.ProfilePictureId)
+            {
+                await _gridFS.DeleteAsync(new ObjectId(oldUser.ProfilePictureId));
+
+                var userImage = await _gridFS.UploadFromBytesAsync($"user_{toUpdate.Id}", toUpdate.ProfilePicture);
+                toUpdate.ProfilePicture = null;
+                toUpdate.ProfilePictureId = userImage.ToString();
+            }
+
+            toUpdate.WaitingCallenges = oldUser.WaitingCallenges;
+            toUpdate.FinishedCallenges = oldUser.FinishedCallenges;
+            toUpdate.PasswordHash = oldUser.PasswordHash;
+            toUpdate.PasswordSalt = oldUser.PasswordSalt;
+
+            await _users.ReplaceOneAsync(databaseUser => databaseUser.Id == toUpdate.Id, toUpdate);
+        }
+
+        public async Task DeleteUserAsync(string userId)
+        {
+            var oldUser = await GetUserAsync(userId);
+            if (oldUser != null)
             {
                 await _gridFS.DeleteAsync(new ObjectId(oldUser.ProfilePictureId));
             }
 
-            var userImage = await _gridFS.UploadFromBytesAsync($"user_{toUpdate.Id}", toUpdate.ProfilePicture);
-            toUpdate.ProfilePicture = null;
-            toUpdate.ProfilePictureId = userImage.ToString();
-
-            await _users.ReplaceOneAsync(databaseUser => databaseUser.Id == toUpdate.Id, toUpdate);
+            await _users.DeleteOneAsync(databaseUser => databaseUser.Id == userId);
         }
 
         /*

@@ -35,6 +35,24 @@ namespace IsatiWei.Api.Controllers
         }
 
         /// <summary>
+        /// Get a user based on its ID
+        /// </summary>
+        /// <param name="id">The ID of the user</param>
+        /// <returns>The user with the given ID</returns>
+        [HttpGet("{id:length(24)}")]
+        public async Task<ActionResult<User>> GetUser(string id)
+        {
+            var user = await _userService.GetUserAsync(id);
+
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(user);
+        }
+
+        /// <summary>
         /// Get the user profile picture
         /// </summary>
         /// <param name="id"></param>
@@ -92,6 +110,29 @@ namespace IsatiWei.Api.Controllers
             {
                 return BadRequest(e.Message);
             }
+
+            return Ok();
+        }
+
+        /*
+         * Delete
+         */
+        /// <summary>
+        /// Delete a user
+        /// </summary>
+        /// <param name="id">The ID of the user you want to delete</param>
+        /// <returns></returns>
+        [HttpDelete("delete/{id:length(24)}")]
+        public async Task<IActionResult> DeleteUser(string id)
+        {
+            bool exist = (await _userService.GetUserAsync(id)) != null;
+
+            if (!exist)
+            {
+                return NotFound();
+            }
+
+            await _userService.DeleteUserAsync(id);
 
             return Ok();
         }
