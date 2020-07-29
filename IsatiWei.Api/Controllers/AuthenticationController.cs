@@ -83,6 +83,13 @@ namespace IsatiWei.Api.Controllers
         /*
          * Put
          */
+
+        /// <summary>
+        /// Update the password for current user
+        /// </summary>
+        /// <param name="passwordUpdateModel"></param>
+        /// <param name="authorization"></param>
+        /// <returns></returns>
         [HttpPut("update/password")]
         public async Task<ActionResult<PasswordUpdate>> UpdatePassword([FromBody] PasswordUpdate passwordUpdateModel, [FromHeader] string authorization)
         {

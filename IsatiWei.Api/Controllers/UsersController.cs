@@ -23,6 +23,18 @@ namespace IsatiWei.Api.Controllers
         }
 
         /// <summary>
+        /// Get a list of all challenges
+        /// </summary>
+        /// <returns>The challenges</returns>
+        [HttpGet]
+        public async Task<ActionResult<List<User>>> GetUsers()
+        {
+            var users = await _userService.GetUsersAsync();
+
+            return Ok(users);
+        }
+
+        /// <summary>
         /// Get the user profile picture
         /// </summary>
         /// <param name="id"></param>

@@ -125,7 +125,7 @@ namespace IsatiWei.Api.Controllers
 
             if (result == null)
             {
-                return NotFound();
+                return NoContent();
             }
 
             return Ok(new ChallengeImage()

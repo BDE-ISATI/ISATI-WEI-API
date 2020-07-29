@@ -28,16 +28,30 @@ namespace IsatiWei.Api.Services
 
         public async Task<User> GetUserAsync(string userId)
         {
-            var user = await _users.FindAsync(databaseUser => databaseUser.Id == userId);
+            var user = await (await _users.FindAsync(databaseUser => databaseUser.Id == userId)).FirstOrDefaultAsync();
 
-            return await user.FirstOrDefaultAsync();
+            if (user == null)
+            {
+                return null;
+            }
+
+            // We need to remove password hash for security reasons;
+            user.PasswordHash = null;
+
+            return user;
         }
 
         public async Task<List<User>> GetUsersAsync()
         {
-            var users = await _users.FindAsync(databaseUser => true);
+            var users = await (await _users.FindAsync(databaseUser => true)).ToListAsync();
 
-            return await users.ToListAsync();
+            // We need to remove password hash for security reasons;
+            foreach (var user in users)
+            {
+                user.PasswordHash = null;
+            }
+
+            return users;
         }
 
         public async Task UpdateUserAsync(User toUpdate)
@@ -48,14 +62,14 @@ namespace IsatiWei.Api.Services
             var oldUser = await GetUserAsync(toUpdate.Id);
             if (oldUser == null) throw new Exception("The user doesn't exist");
 
-            if (oldUser.ProfilePictureId != ObjectId.Empty)
+            if (string.IsNullOrWhiteSpace(oldUser.ProfilePictureId))
             {
-                await _gridFS.DeleteAsync(oldUser.ProfilePictureId);
+                await _gridFS.DeleteAsync(new ObjectId(oldUser.ProfilePictureId));
             }
 
             var userImage = await _gridFS.UploadFromBytesAsync($"user_{toUpdate.Id}", toUpdate.ProfilePicture);
             toUpdate.ProfilePicture = null;
-            toUpdate.ProfilePictureId = userImage;
+            toUpdate.ProfilePictureId = userImage.ToString();
 
             await _users.ReplaceOneAsync(databaseUser => databaseUser.Id == toUpdate.Id, toUpdate);
         }
@@ -66,12 +80,12 @@ namespace IsatiWei.Api.Services
         public async Task<byte[]> GetProfilePicture(string userId)
         {
             var user = await GetUserAsync(userId);
-            if (user == null || user.ProfilePictureId == ObjectId.Empty)
+            if (user == null || string.IsNullOrWhiteSpace(user.ProfilePictureId))
             {
                 return null;
             }
 
-            return await _gridFS.DownloadAsBytesAsync(user.ProfilePictureId);
+            return await _gridFS.DownloadAsBytesAsync(new ObjectId(user.ProfilePictureId));
         }
 
         public async Task UpdateProfilePicture(string id, byte[] newProfilePicture)
@@ -79,14 +93,14 @@ namespace IsatiWei.Api.Services
             User user = await (await _users.FindAsync(databaseUser => databaseUser.Id == id)).FirstOrDefaultAsync();
             if (user == null) throw new Exception("Can't find the user");
 
-            if (user.ProfilePictureId != ObjectId.Empty)
+            if (string.IsNullOrWhiteSpace(user.ProfilePictureId))
             {
-                await _gridFS.DeleteAsync(user.ProfilePictureId);
+                await _gridFS.DeleteAsync(new ObjectId(user.ProfilePictureId));
             }
 
             var userImage = await _gridFS.UploadFromBytesAsync($"user_{user.Id}", newProfilePicture);
 
-            user.ProfilePictureId = userImage;
+            user.ProfilePictureId = userImage.ToString();
 
             await _users.ReplaceOneAsync(databaseUser => databaseUser.Id == user.Id, user);
         }
