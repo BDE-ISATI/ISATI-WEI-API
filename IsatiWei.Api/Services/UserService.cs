@@ -14,6 +14,7 @@ namespace IsatiWei.Api.Services
     public class UserService
     {
         private readonly IMongoCollection<User> _users;
+        private readonly IMongoCollection<GameSettings> _gameSettings;
 
         private readonly GridFSBucket _gridFS;
 
@@ -23,6 +24,7 @@ namespace IsatiWei.Api.Services
             var database = client.GetDatabase(settings.DatabaseName);
 
             _users = database.GetCollection<User>("users");
+            _gameSettings = database.GetCollection<GameSettings>("game_settings");
             _gridFS = new GridFSBucket(database);
         }
 
@@ -54,8 +56,27 @@ namespace IsatiWei.Api.Services
             return users;
         }
 
-        public async Task<List<User>> GetUsersRankingAsync()
+        public async Task<List<User>> GetUsersRankingAsync(string userRequestingId)
         {
+            if ((await (await _users.FindAsync(databaseUser => databaseUser.Id == userRequestingId)).FirstOrDefaultAsync()).Role != UserRoles.Administrator)
+            {
+                GameSettings settings = await (await _gameSettings.FindAsync(databaseGameSettings => true)).FirstOrDefaultAsync();
+
+                if (settings == null)
+                {
+                    settings = new GameSettings()
+                    {
+                        IsUsersRankingVisible = false,
+                        IsTeamsRankingVisible = false
+                    };
+                }
+
+                if (!settings.IsUsersRankingVisible)
+                {
+                    return null;
+                }
+            }
+
             var sortedUsers = await _users.Find(user => true).Sort(new BsonDocument("Score", -1)).ToListAsync();
 
             List<User> result = new List<User>();

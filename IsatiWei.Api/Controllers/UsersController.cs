@@ -57,11 +57,16 @@ namespace IsatiWei.Api.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet("ranking")]
-        public async Task<ActionResult<List<User>>> GetUsersRankingAsync()
+        public async Task<ActionResult<List<User>>> GetUsersRankingAsync([FromHeader] string authorization)
         {
-            List<User> users = await _userService.GetUsersRankingAsync();
+            List<User> users = await _userService.GetUsersRankingAsync(UserUtilities.UserIdFromAuth(authorization));
 
-            return users;
+            if (users == null)
+            {
+                return NoContent();
+            }
+
+            return Ok(users);
         }
 
         /// <summary>

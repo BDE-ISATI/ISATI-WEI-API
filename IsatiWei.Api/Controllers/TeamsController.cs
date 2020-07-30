@@ -61,11 +61,16 @@ namespace IsatiWei.Api.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet("ranking")]
-        public async Task<ActionResult<List<Team>>> GetTeamsRankingAsync()
+        public async Task<ActionResult<List<Team>>> GetTeamsRankingAsync([FromHeader] string authorization)
         {
-            List<Team> teams = await _teamService.GetTeamsRankingAsync();
+            List<Team> teams = await _teamService.GetTeamsRankingAsync(UserUtilities.UserIdFromAuth(authorization));
 
-            return teams;
+            if (teams == null)
+            {
+                return NoContent();
+            }
+
+            return Ok(teams);
         }
 
         /// <summary>

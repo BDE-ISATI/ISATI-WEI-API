@@ -15,6 +15,8 @@ namespace IsatiWei.Api.Services
     {
         private readonly IMongoCollection<Team> _teams;
         private readonly IMongoCollection<User> _users;
+        private readonly IMongoCollection<GameSettings> _gameSettings;
+
 
         private readonly GridFSBucket _gridFS;
 
@@ -25,6 +27,7 @@ namespace IsatiWei.Api.Services
 
             _teams = database.GetCollection<Team>("teams");
             _users = database.GetCollection<User>("users");
+            _gameSettings = database.GetCollection<GameSettings>("game_settings");
 
             _gridFS = new GridFSBucket(database);
         }
@@ -57,8 +60,27 @@ namespace IsatiWei.Api.Services
             return teams;
         }
 
-        public async Task<List<Team>> GetTeamsRankingAsync()
+        public async Task<List<Team>> GetTeamsRankingAsync(string userRequestingId)
         {
+            if ((await (await _users.FindAsync(databaseUser => databaseUser.Id == userRequestingId)).FirstOrDefaultAsync()).Role != UserRoles.Administrator)
+            {
+                GameSettings settings = await (await _gameSettings.FindAsync(databaseGameSettings => true)).FirstOrDefaultAsync();
+
+                if (settings == null)
+                {
+                    settings = new GameSettings()
+                    {
+                        IsUsersRankingVisible = false,
+                        IsTeamsRankingVisible = false
+                    };
+                }
+
+                if (!settings.IsTeamsRankingVisible)
+                {
+                    return null;
+                }
+            }
+
             var sortedTeams = await _teams.Find(team => true).Sort(new BsonDocument("Score", -1)).ToListAsync();
 
             foreach (var team in sortedTeams)
