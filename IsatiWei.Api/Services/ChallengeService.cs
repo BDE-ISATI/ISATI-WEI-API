@@ -221,7 +221,7 @@ namespace IsatiWei.Api.Services
             return result;
         }
 
-        public async Task<List<IndividualChallenge>> GetDoneChallenges(string playerId)
+        public async Task<List<IndividualChallenge>> GetDoneChallengesForPlayer(string playerId)
         {
             var player = await (await _users.FindAsync(databaseUser => databaseUser.Id == playerId)).FirstOrDefaultAsync();
             if (player == null) return null;
@@ -243,6 +243,34 @@ namespace IsatiWei.Api.Services
                     Value = challenge.Value,
                     WaitingValidation = player.WaitingCallenges.ContainsKey(challenge.Id),
                     NumberLeft = (player.FinishedCallenges.ContainsKey(challenge.Id)) ? challenge.NumberOfRepetitions - player.FinishedCallenges[challenge.Id] : challenge.NumberOfRepetitions
+
+                });
+            }
+
+            return result;
+        }
+
+        public async Task<List<TeamChallenge>> GetDoneChallengesForTeam(string teamId)
+        {
+            var team = await (await _teams.FindAsync(databaseTeam => databaseTeam.Id == teamId)).FirstOrDefaultAsync();
+            if (team == null) return null;
+
+            List<string> challengesIds = team.FinishedCallenges.Keys.ToList();
+
+            var challenges = await (await _challenges.FindAsync(databaseChallenge => challengesIds.Contains(databaseChallenge.Id))).ToListAsync();
+
+            List<TeamChallenge> result = new List<TeamChallenge>();
+
+            foreach (var challenge in challenges)
+            {
+                result.Add(new TeamChallenge()
+                {
+                    Id = challenge.Id,
+                    ImageId = challenge.ImageId,
+                    Name = challenge.Name,
+                    Description = challenge.Description,
+                    Value = challenge.Value,
+                    NumberLeft = (team.FinishedCallenges.ContainsKey(challenge.Id)) ? challenge.NumberOfRepetitions - team.FinishedCallenges[challenge.Id] : challenge.NumberOfRepetitions
 
                 });
             }

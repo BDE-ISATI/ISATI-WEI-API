@@ -101,9 +101,27 @@ namespace IsatiWei.Api.Controllers
         /// <param name="player">The player we want done challenges</param>
         /// <returns></returns>
         [HttpGet("done/{player:length(24)}")]
-        public async Task<ActionResult<List<IndividualChallenge>>> GetDoneChallenges(string player)
+        public async Task<ActionResult<List<IndividualChallenge>>> GetDoneChallengesForPlayer(string player)
         {
-            var result = await _challengeService.GetDoneChallenges(player);
+            var result = await _challengeService.GetDoneChallengesForPlayer(player);
+
+            if (result == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Get all challenges realised at least on time by team
+        /// </summary>
+        /// <param name="team">The team we want done challenges</param>
+        /// <returns></returns>
+        [HttpGet("done/team/{team:length(24)}")]
+        public async Task<ActionResult<List<IndividualChallenge>>> GetDoneChallenges(string team)
+        {
+            var result = await _challengeService.GetDoneChallengesForTeam(team);
 
             if (result == null)
             {

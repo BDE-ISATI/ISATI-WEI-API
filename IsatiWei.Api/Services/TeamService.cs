@@ -217,6 +217,7 @@ namespace IsatiWei.Api.Services
             // We finally update the team, based on the current to keep members and score
             current.Name = toUpdate.Name;
             current.CaptainId = toUpdate.CaptainId;
+            current.Score = toUpdate.Score;
 
             if (toUpdate.ImageId == "modified")
             {
