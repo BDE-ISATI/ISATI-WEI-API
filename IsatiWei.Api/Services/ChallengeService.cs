@@ -118,6 +118,9 @@ namespace IsatiWei.Api.Services
             if (string.IsNullOrWhiteSpace(toCreate.Name)) throw new Exception("You must provide a name to the challenge");
             if (string.IsNullOrWhiteSpace(toCreate.Description)) throw new Exception("You must provide a description to the challenge");
 
+            // If we don't do this, it try to convert it to object id
+            toCreate.ImageId = null;
+
             await _challenges.InsertOneAsync(toCreate);
 
             var challengeImage = await _gridFS.UploadFromBytesAsync($"challenge_{toCreate.Id}", toCreate.Image);

@@ -6,3 +6,5 @@
 /IsatiWei.Api/bin/
 /IsatiWei.Api/obj
 *.user
+/IsatiWei.Api/.config
+/IsatiWei.Api/Properties/PublishProfiles

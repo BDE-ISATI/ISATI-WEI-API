@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Reflection;
 using System.Threading.Tasks;
 using AutoMapper;
@@ -10,6 +11,7 @@ using IsatiWei.Api.Services;
 using IsatiWei.Api.Settings;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -33,17 +35,6 @@ namespace IsatiWei.Api
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            // Configuration
-            services.Configure<MongoSettings>(Configuration.GetSection(nameof(MongoSettings)));
-            services.AddSingleton<IMongoSettings>(sp => sp.GetRequiredService<IOptions<MongoSettings>>().Value);
-
-            // Services
-            services.AddSingleton<AuthenticationService>();
-            services.AddSingleton<TeamService>();
-            services.AddSingleton<ChallengeService>();
-            services.AddSingleton<UserService>();
-            services.AddSingleton<SettingsService>();
-
             // Swagger
             services.AddSwaggerGen(c =>
             {
@@ -66,6 +57,22 @@ namespace IsatiWei.Api
                 c.IncludeXmlComments(xmlPath);
             });
 
+            // Configurations
+            services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.KnownProxies.Add(IPAddress.Parse("136.243.124.165"));
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            });
+            services.Configure<MongoSettings>(Configuration.GetSection(nameof(MongoSettings)));
+            services.AddSingleton<IMongoSettings>(sp => sp.GetRequiredService<IOptions<MongoSettings>>().Value);
+
+            // Services
+            services.AddSingleton<AuthenticationService>();
+            services.AddSingleton<TeamService>();
+            services.AddSingleton<ChallengeService>();
+            services.AddSingleton<UserService>();
+            services.AddSingleton<SettingsService>();
+
             // Other
             services.AddControllers();
             services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
@@ -79,7 +86,14 @@ namespace IsatiWei.Api
                 app.UseDeveloperExceptionPage();
             }
 
-            // Enable middleware to serve generated Swagger as a JSON endpoint.
+            app.UseCors(builder => builder
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .SetIsOriginAllowed((host) => true)
+                .AllowCredentials()
+            );
+
+            //Enable middleware to serve generated Swagger as a JSON endpoint.
             app.UseSwagger();
 
             // Enable middleware to serve swagger-ui (HTML, JS, CSS, etc.),
@@ -89,7 +103,7 @@ namespace IsatiWei.Api
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "ISATI WEI API V1");
             });
 
-            app.UseHttpsRedirection();
+            //app.UseHttpsRedirection();
 
             app.UseRouting();
 
